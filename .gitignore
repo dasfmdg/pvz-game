@@ -1,0 +1,14 @@
+# Godot 4 缓存与导入产物（.import 文件需要提交，缓存目录不需要）
+.godot/
+/android/
+
+# 导出产物
+build/
+export/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.tmp
+Thumbs.db
+desktop.ini

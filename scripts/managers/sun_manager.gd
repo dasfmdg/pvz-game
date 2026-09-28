@@ -1,0 +1,52 @@
+class_name SunManager
+extends Node2D
+## 阳光经济：天降阳光定时投放、阳光收集判定、失效引用清理
+
+var game: MainGameManager = null
+var suns: Array[SunItem] = []
+
+var _sky_timer := 0.0
+
+
+func setup(game_ref: MainGameManager) -> void:
+	game = game_ref
+	_sky_timer = GameConfig.SKY_SUN_FIRST
+
+
+func _process(delta: float) -> void:
+	if game == null or not game.is_running():
+		return
+	_sky_timer -= delta
+	if _sky_timer > 0.0:
+		return
+	_sky_timer = GameConfig.SKY_SUN_INTERVAL
+	_spawn_sky_sun()
+
+
+func _spawn_sky_sun() -> void:
+	var spawn_x := randf_range(GameConfig.GRID_X - 60.0, GameConfig.CANVAS_W - 160.0)
+	var target_y := randf_range(260.0, 960.0)
+	game.spawn_sun(Vector2(spawn_x, -70.0), GameConfig.SKY_SUN_VALUE, "sky", target_y)
+
+
+func register(sun: SunItem) -> void:
+	suns.append(sun)
+
+
+## 点击收集：命中最近的一颗阳光
+func try_collect_at(world_pos: Vector2) -> bool:
+	var best: SunItem = null
+	var best_distance := SunItem.COLLECT_RADIUS
+	for index in range(suns.size() - 1, -1, -1):
+		var sun := suns[index]
+		if sun == null or not is_instance_valid(sun):
+			suns.remove_at(index)
+			continue
+		var distance := sun.global_position.distance_to(world_pos)
+		if distance <= best_distance:
+			best = sun
+			best_distance = distance
+	if best == null:
+		return false
+	best.collect()
+	return true
