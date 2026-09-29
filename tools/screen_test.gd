@@ -62,6 +62,10 @@ func _test_router() -> void:
 	_check("主菜单含 4 个按钮",
 			router.current_screen is MenuScreen \
 			and (router.current_screen as MenuScreen).buttons.size() == 4)
+	_check("主菜单告示牌显示玩家名字",
+			router.current_screen is MenuScreen \
+			and (router.current_screen as MenuScreen).name_label != null \
+			and (router.current_screen as MenuScreen).name_label.text == MenuScreen.PLAYER_NAME)
 
 	router.show_level_select()
 	await get_tree().process_frame

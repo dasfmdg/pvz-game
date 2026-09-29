@@ -29,6 +29,7 @@ godot --headless --path . --quit-after 400
 
 | 输入 | 行为 |
 | --- | --- |
+| 鼠标左键 / 任意按键 | 启动加载页：进入主菜单 |
 | 鼠标左键 | 收集阳光 / 放置已选中的植物 / 铲除（铲子模式） |
 | 数字键 1~9、0 | 选择卡片槽中的第 1~10 张卡片 |
 | Esc | 取消当前手持（卡片 / 铲子） |
@@ -53,18 +54,18 @@ godot --headless --path . --quit-after 400
 
 ```
 scenes/main.tscn            入口场景（仅根节点，其余节点代码构建）
-scripts/main.gd             启动入口：界面路由（主菜单 → 关卡选择 / 图鉴 / 设置 → 关卡）
+scripts/main.gd             启动入口：界面路由（启动加载页 → 主菜单 → 关卡选择 / 图鉴 / 设置 → 关卡）
 scripts/autoload/           EventBus / GameConfig / SpriteLibrary / SoundManager / SaveManager 五个单例
 scripts/data/sprite_meta.gd 精灵表帧元数据（由 tools/gen_sprite_meta.py 生成，勿手改）
 scripts/entities/           植物基类与 7 类植物、僵尸基类、豌豆、阳光、小推车、特效
 scripts/managers/           主控、格子与种植、阳光经济、波次调度、小推车管理
-scripts/screens/            主菜单、关卡选择（30 关滚动网格）、图鉴、设置与界面公共工具 UiKit
+scripts/screens/            启动加载页、主菜单、关卡选择（30 关滚动网格）、图鉴、设置与界面公共工具 UiKit
 scripts/ui/                 卡片槽与冷却、HUD、横幅、胜负遮罩
 assets/                     精灵表 PNG、WAV 音效、卡片图、草坪背景（来自 ../pvzcode/assets）
 tools/gen_sprite_meta.py    从 ../pvzcode/js/sprites-meta.js 生成 scripts/data/sprite_meta.gd
 tools/headless_sim.*        无窗口整局模拟（自动采集阳光 + 布阵，验证波次/胜负链路）
 tools/entity_test.*         无窗口实体层单元校验（87 项断言：顶具/破损/减速/各类植物行为）
-tools/screen_test.*         无窗口界面层校验（132 项断言：路由、存档、30 关数据与解锁表、图鉴、设置）
+tools/screen_test.*         无窗口界面层校验（142 项断言：路由、存档、30 关数据与解锁表、图鉴、设置）
 tools/level_sim.*           无窗口 30 关逐关模拟（逐关自动布阵打到结束，验证波次/胜负链路不卡死）
 ```
 
