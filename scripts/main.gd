@@ -1,9 +1,9 @@
 class_name MainRouter
 extends Node2D
-## 启动入口：界面路由（主菜单 → 关卡选择 / 图鉴 / 设置 → 关卡游戏）
+## 启动入口：界面路由（启动加载页 → 主菜单 → 关卡选择 / 图鉴 / 设置 → 关卡游戏）
 ## 只有进入游戏态才实例化 MainGameManager；离开游戏态时释放主控
 
-enum E_State { MENU, LEVEL_SELECT, ALMANAC, SETTINGS, GAME }
+enum E_State { SPLASH, MENU, LEVEL_SELECT, ALMANAC, SETTINGS, GAME }
 
 const GAME_OVER_LAYER := 20
 
@@ -40,10 +40,20 @@ func _ready() -> void:
 	add_child(_ui_root)
 	_build_game_over_overlay()
 	EventBus.game_over.connect(_on_game_over)
-	show_menu()
+	show_splash()
 
 
 # ---------------- 界面切换 ----------------
+## 启动加载页：封面图先显示出来，点击或按键后进主菜单
+func show_splash() -> void:
+	state = E_State.SPLASH
+	_clear_game()
+	_hide_game_over()
+	var screen := SplashScreen.new()
+	screen.dismissed.connect(show_menu)
+	_set_screen(screen)
+
+
 func show_menu() -> void:
 	state = E_State.MENU
 	_clear_game()

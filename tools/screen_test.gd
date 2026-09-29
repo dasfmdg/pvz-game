@@ -50,7 +50,14 @@ func _test_router() -> void:
 	add_child(router)
 	await get_tree().process_frame
 
-	_check("初始进入主菜单",
+	_check("初始进入启动加载页",
+			router.state == MainRouter.E_State.SPLASH and router.current_screen is SplashScreen)
+	var splash := router.current_screen as SplashScreen
+	_check("加载页封面贴图加载成功", splash != null and splash.has_cover_texture())
+	if splash != null:
+		splash.dismiss()
+	await get_tree().process_frame
+	_check("加载页确认后进入主菜单",
 			router.state == MainRouter.E_State.MENU and router.current_screen is MenuScreen)
 	_check("主菜单含 4 个按钮",
 			router.current_screen is MenuScreen \
