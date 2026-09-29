@@ -48,24 +48,28 @@ godot --headless --path . --quit-after 400
   倭瓜 13 / 食人花 15 / 三重 17）生成每关卡片，第 1 关仅向日葵与豌豆射手，第 17 关起全量 11 种。
 - **夜景关卡 6 关**（第 16/21/24/26/28/30 关，源数据 `scene: night`）：草坪转为夜色冷色调，
   且不再天降阳光，只能靠向日葵产阳光。
+- **选卡界面**（第 7 关起）：进关前先选携带的植物，界面上方列出本关会出现的僵尸种类（中文名 + 立绘），
+  下方从已解锁植物里点选/取消，选卡顺序即时显示；槽位上限 `min(已解锁数, 5 + 每 4 关 +1, 10)`，
+  即第 7 关 6 张、第 11 关 7 张、第 17 关 9 张、第 25 关起封顶 10 张；第 1~6 关仍直接进关。
+  选卡结果只存在本次运行内存里，结算后按 `R` 重试沿用同一套卡片，退出游戏不落存档。
 - 阳光经济：开局 50，天降阳光每 10 秒一颗（夜间不下），向日葵每 12 秒产出一颗。
 
 ## 目录结构
 
 ```
 scenes/main.tscn            入口场景（仅根节点，其余节点代码构建）
-scripts/main.gd             启动入口：界面路由（启动加载页 → 主菜单 → 关卡选择 / 图鉴 / 设置 → 关卡）
+scripts/main.gd             启动入口：界面路由（启动加载页 → 主菜单 → 关卡选择 / 图鉴 / 设置 → 选卡 → 关卡）
 scripts/autoload/           EventBus / GameConfig / SpriteLibrary / SoundManager / SaveManager 五个单例
 scripts/data/sprite_meta.gd 精灵表帧元数据（由 tools/gen_sprite_meta.py 生成，勿手改）
 scripts/entities/           植物基类与 7 类植物、僵尸基类、豌豆、阳光、小推车、特效
 scripts/managers/           主控、格子与种植、阳光经济、波次调度、小推车管理
-scripts/screens/            启动加载页、主菜单、关卡选择（30 关滚动网格）、图鉴、设置与界面公共工具 UiKit
-scripts/ui/                 卡片槽与冷却、HUD、横幅、胜负遮罩
+scripts/screens/            启动加载页、主菜单、关卡选择（30 关滚动网格）、选卡、图鉴、设置与界面公共工具 UiKit
+scripts/ui/                 卡片槽与冷却、HUD、横幅、胜负遮罩、选卡界面用的卡片控件
 assets/                     精灵表 PNG、WAV 音效、卡片图、草坪背景（来自 ../pvzcode/assets）
 tools/gen_sprite_meta.py    从 ../pvzcode/js/sprites-meta.js 生成 scripts/data/sprite_meta.gd
 tools/headless_sim.*        无窗口整局模拟（自动采集阳光 + 布阵，验证波次/胜负链路）
 tools/entity_test.*         无窗口实体层单元校验（87 项断言：顶具/破损/减速/各类植物行为）
-tools/screen_test.*         无窗口界面层校验（142 项断言：路由、存档、30 关数据与解锁表、图鉴、设置）
+tools/screen_test.*         无窗口界面层校验（182 项断言：路由、选卡、存档、30 关数据与解锁表、图鉴、设置）
 tools/level_sim.*           无窗口 30 关逐关模拟（逐关自动布阵打到结束，验证波次/胜负链路不卡死）
 ```
 

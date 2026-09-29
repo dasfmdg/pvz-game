@@ -1,9 +1,9 @@
 class_name MainRouter
 extends Node2D
-## 启动入口：界面路由（启动加载页 → 主菜单 → 关卡选择 / 图鉴 / 设置 → 关卡游戏）
+## 启动入口：界面路由（启动加载页 → 主菜单 → 关卡选择 / 图鉴 / 设置 → 选卡 → 关卡游戏）
 ## 只有进入游戏态才实例化 MainGameManager；离开游戏态时释放主控
 
-enum E_State { SPLASH, MENU, LEVEL_SELECT, ALMANAC, SETTINGS, GAME }
+enum E_State { SPLASH, MENU, LEVEL_SELECT, SEED_SELECT, ALMANAC, SETTINGS, GAME }
 
 const GAME_OVER_LAYER := 20
 
@@ -22,6 +22,10 @@ var state := E_State.MENU
 var game: MainGameManager = null
 var current_screen: Control = null
 var current_level := 0
+## 上次选卡结果（仅路由内存，供重试沿用，不落存档）
+var current_seed_selection: Array[String] = []
+
+var _seed_selection_level := -1
 
 var _ui_root: Control = null
 var _overlay_layer: CanvasLayer = null
@@ -71,8 +75,29 @@ func show_level_select() -> void:
 	_clear_game()
 	_hide_game_over()
 	var screen := LevelSelectScreen.new()
-	screen.level_chosen.connect(start_level)
+	screen.level_chosen.connect(_on_level_chosen)
 	screen.back_pressed.connect(show_menu)
+	_set_screen(screen)
+
+
+## 关卡选择回调：第 7 关起先经选卡界面，其余直接进关
+func _on_level_chosen(index: int) -> void:
+	if GameConfig.level_needs_seed_select(index):
+		show_seed_select(index)
+		return
+	start_level(index)
+
+
+## 选卡界面：预选上次同关的选卡结果
+func show_seed_select(index: int) -> void:
+	state = E_State.SEED_SELECT
+	current_level = clampi(index, 0, GameConfig.LEVELS.size() - 1)
+	_clear_game()
+	_hide_game_over()
+	var screen := SeedSelectScreen.new()
+	screen.setup(current_level, _selection_for(current_level))
+	screen.start_pressed.connect(_on_seed_confirmed)
+	screen.back_pressed.connect(show_level_select)
 	_set_screen(screen)
 
 
@@ -95,17 +120,34 @@ func show_settings() -> void:
 
 
 ## 进入关卡：实例化主控并安装关卡数据（加入场景树前完成）
-func start_level(index: int) -> void:
+## selected_plants 为空表示按解锁表全量携带（第 1~6 关与回归工具走此路径）
+func start_level(index: int, selected_plants: Array = []) -> void:
 	state = E_State.GAME
 	current_level = index
 	_set_screen(null)
 	_hide_game_over()
 	_clear_game()
 	var manager := MainGameManager.new()
-	manager.setup_level(index)
+	manager.setup_level(index, selected_plants)
 	manager.restart_requested.connect(_on_restart)
 	add_child(manager)
 	game = manager
+
+
+## 选卡确认：记录本关选卡结果并进关（重试沿用，不落存档）
+func _on_seed_confirmed(plants: Array) -> void:
+	current_seed_selection = []
+	for raw_id in plants:
+		current_seed_selection.append(String(raw_id))
+	_seed_selection_level = current_level
+	start_level(current_level, current_seed_selection)
+
+
+## 上次同关的选卡结果（不同关卡返回空，避免把旧关卡选择带进重试）
+func _selection_for(index: int) -> Array:
+	if _seed_selection_level == index:
+		return current_seed_selection
+	return []
 
 
 ## 离开游戏态，回到关卡选择
@@ -254,7 +296,7 @@ func _set_final_win_visible(show_flag: bool) -> void:
 
 
 func _on_restart() -> void:
-	start_level(current_level)
+	start_level(current_level, _selection_for(current_level))
 
 
 func _on_quit() -> void:

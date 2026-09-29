@@ -170,8 +170,136 @@ func _test_router() -> void:
 	await get_tree().process_frame
 	_check("离开游戏态后全通关画面隐藏", not router.is_final_win_visible())
 
+	await _test_seed_select(router)
+
 	router.queue_free()
 	await get_tree().process_frame
+
+
+# ---------------- 选卡界面路由 ----------------
+func _test_seed_select(router: MainRouter) -> void:
+	print("[TEST] --- 选卡界面 ---")
+
+	# 第 1~6 关：点卡片仍直接进关
+	router.show_level_select()
+	await get_tree().process_frame
+	(router.current_screen as LevelSelectScreen).level_chosen.emit(5)
+	await get_tree().process_frame
+	_check("第 6 关点卡片直接进关",
+			router.state == MainRouter.E_State.GAME and router.game != null \
+			and router.game.level_index == 5)
+	router.return_to_level_select()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	# 第 7 关：进关前先出选卡界面
+	router.show_level_select()
+	await get_tree().process_frame
+	(router.current_screen as LevelSelectScreen).level_chosen.emit(6)
+	await get_tree().process_frame
+	_check("第 7 关先进入选卡界面",
+			router.state == MainRouter.E_State.SEED_SELECT \
+			and router.current_screen is SeedSelectScreen)
+	var seed7 := router.current_screen as SeedSelectScreen
+	if seed7 == null:
+		return
+	_check("选卡界面关卡序号正确", seed7.level_index == 6)
+	_check("选卡界面槽位上限与配置一致",
+			seed7.slot_limit == GameConfig.seed_slot_limit(7))
+	_check("选卡界面可选卡按解锁表",
+			seed7.cards.size() == GameConfig.plants_for_level(7).size() \
+			and seed7.available_plants.size() == seed7.cards.size())
+	_check("选卡界面默认预选满槽", seed7.picked.size() == seed7.slot_limit)
+	var level_kinds: Array[String] = GameConfig.zombies_for_level(6)
+	_check("选卡界面僵尸种类与配置一致",
+			seed7.zombies.size() == level_kinds.size() \
+			and seed7.zombie_tiles.size() == level_kinds.size())
+	_check("选卡界面提示计数同步",
+			seed7.count_label != null \
+			and seed7.count_label.text == "已选 %d / %d 张" % [seed7.picked.size(), seed7.slot_limit])
+	_check("已选预览条与已选数量一致",
+			seed7.picked_tiles.size() == seed7.picked.size())
+
+	var first_plant: String = seed7.picked[0]
+	_check("取消已选卡片",
+			seed7.toggle_plant(first_plant) and not seed7.picked.has(first_plant))
+	_check("取消后计数同步",
+			seed7.count_label.text == "已选 %d / %d 张" % [seed7.picked.size(), seed7.slot_limit])
+	_check("腾位后可重选",
+			seed7.toggle_plant(first_plant) \
+			and seed7.picked[seed7.picked.size() - 1] == first_plant)
+
+	seed7.back_button.pressed.emit()
+	await get_tree().process_frame
+	_check("选卡界面返回关卡选择",
+			router.state == MainRouter.E_State.LEVEL_SELECT \
+			and router.current_screen is LevelSelectScreen)
+
+	# 第 17 关：11 选 9，验证满槽拒绝与改选
+	(router.current_screen as LevelSelectScreen).level_chosen.emit(16)
+	await get_tree().process_frame
+	_check("第 17 关进入选卡界面",
+			router.current_screen is SeedSelectScreen \
+			and (router.current_screen as SeedSelectScreen).level_index == 16)
+	var seed17 := router.current_screen as SeedSelectScreen
+	if seed17 == null:
+		return
+	_check("第 17 关槽位上限为 9", seed17.slot_limit == 9)
+	_check("第 17 关可选 11 张卡", seed17.available_plants.size() == 11)
+	_check("第 17 关默认预选 9 张", seed17.picked.size() == 9)
+	var spare_plant := ""
+	for plant_id in seed17.available_plants:
+		if not seed17.picked.has(plant_id):
+			spare_plant = plant_id
+			break
+	_check("满槽时拒绝追加",
+			not spare_plant.is_empty() and not seed17.toggle_plant(spare_plant))
+	_check("满槽拒绝后已选不变", seed17.picked.size() == 9)
+	var dropped_plant: String = seed17.picked[0]
+	seed17.toggle_plant(dropped_plant)
+	_check("腾位后可改选未携带的植物",
+			seed17.toggle_plant(spare_plant) and seed17.picked.has(spare_plant))
+
+	var chosen: Array = seed17.picked.duplicate()
+	seed17.start_button.pressed.emit()
+	await get_tree().process_frame
+	_check("选卡确认后进入关卡",
+			router.state == MainRouter.E_State.GAME and router.game != null \
+			and router.game.level_index == 16)
+	var same_plants := router.game != null \
+		and router.game.level_plants.size() == chosen.size()
+	if same_plants:
+		for plant_id in chosen:
+			if not router.game.level_plants.has(plant_id):
+				same_plants = false
+	_check("关卡卡片与所选植物一致", same_plants)
+	var recorded := router.current_seed_selection.size() == chosen.size()
+	if recorded:
+		for plant_id in chosen:
+			if not router.current_seed_selection.has(plant_id):
+				recorded = false
+	_check("路由记录本次选卡结果", recorded)
+
+	router.game.restart_requested.emit()
+	await get_tree().process_frame
+	_check("重试沿用上次选卡结果",
+			router.game != null and router.game.level_index == 16 \
+			and router.game.level_plants.size() == chosen.size())
+
+	router.return_to_level_select()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	(router.current_screen as LevelSelectScreen).level_chosen.emit(16)
+	await get_tree().process_frame
+	var seed_again := router.current_screen as SeedSelectScreen
+	_check("再次进入选卡界面预选上次结果",
+			seed_again != null and seed_again.picked.size() == chosen.size() \
+			and seed_again.picked.has(spare_plant))
+	if seed_again != null:
+		seed_again.back_button.pressed.emit()
+	await get_tree().process_frame
+	_check("选卡取消后不进入关卡",
+			router.state == MainRouter.E_State.LEVEL_SELECT and router.game == null)
 
 
 # ---------------- 存档 ----------------
@@ -231,6 +359,60 @@ func _test_levels() -> void:
 	_check("第 10 关仍未解锁寒冰射手", not GameConfig.plants_for_level(10).has("snowpea"))
 	_check("第 30 关解锁全部 11 种植物",
 			GameConfig.plants_for_level(30).size() == GameConfig.PLANT_ORDER.size())
+
+	# ---------------- 选卡界面数据 ----------------
+	var slot_expect := {1: 2, 3: 3, 7: 6, 11: 7, 17: 9, 25: 10, 30: 10}
+	var slots_ok := true
+	for level_id in slot_expect.keys():
+		if GameConfig.seed_slot_limit(int(level_id)) != int(slot_expect[level_id]):
+			slots_ok = false
+	_check("槽位上限按关卡推进增长", slots_ok)
+
+	var slots_valid := true
+	var last_slot := 0
+	for i in GameConfig.LEVELS.size():
+		var slot := GameConfig.seed_slot_limit(i + 1)
+		if slot < last_slot or slot < 1 or slot > GameConfig.SEED_SLOT_MAX:
+			slots_valid = false
+		last_slot = slot
+	_check("30 关槽位合法且单调不减", slots_valid)
+
+	_check("第 1 关不经选卡", not GameConfig.level_needs_seed_select(0))
+	_check("第 6 关不经选卡", not GameConfig.level_needs_seed_select(5))
+	_check("第 7 关起经选卡",
+			GameConfig.level_needs_seed_select(6) and GameConfig.level_needs_seed_select(29))
+
+	var opening_kinds: Array[String] = GameConfig.zombies_for_level(0)
+	_check("第 1 关僵尸种类仅普通僵尸",
+			opening_kinds.size() == 1 and opening_kinds[0] == "basic")
+	_check("第 3 关僵尸种类含路障僵尸", GameConfig.zombies_for_level(2).has("cone"))
+	_check("第 6 关覆盖 5 种非旗帜僵尸", GameConfig.zombies_for_level(5).size() == 5)
+
+	var kinds_valid := true
+	for i in GameConfig.LEVELS.size():
+		var kinds: Array[String] = GameConfig.zombies_for_level(i)
+		if kinds.is_empty():
+			kinds_valid = false
+		for zombie_id in kinds:
+			if zombie_id == "flag" or not GameConfig.ZOMBIES.has(zombie_id):
+				kinds_valid = false
+	_check("30 关僵尸种类合法且不含旗帜", kinds_valid)
+	_check("默认不计入大波追加的旗帜僵尸",
+			not GameConfig.zombies_for_level(0).has("flag"))
+	_check("include_flag 打开时计入旗帜僵尸",
+			GameConfig.zombies_for_level(0, true).has("flag") \
+			and GameConfig.zombies_for_level(5, true).size() == 6)
+
+	_check("僵尸中文名表 6 条",
+			GameConfig.ZOMBIE_NAMES_CN.size() == GameConfig.ZOMBIES.size())
+	var names_ok := true
+	for zombie_id in GameConfig.ZOMBIES.keys():
+		var name_cn := GameConfig.zombie_name_cn(String(zombie_id))
+		if name_cn.is_empty() or name_cn == String(zombie_id):
+			names_ok = false
+	_check("每个僵尸都有中文名", names_ok)
+	_check("未知僵尸名回退不为空",
+			not GameConfig.zombie_name_cn("nonexistent").is_empty())
 
 
 # ---------------- 图鉴 ----------------

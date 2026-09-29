@@ -12,6 +12,13 @@ const CJK_FONTS: Array[String] = [
 	"PingFang SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "sans-serif",
 ]
 
+## 有独立立绘的僵尸（其余走行走精灵表首帧兜底）
+const ZOMBIE_PAGES := {
+	"basic": "page_zombie",
+	"cone": "page_conehead",
+	"bucket": "page_buckethead",
+}
+
 static var _font: Font = null
 
 
@@ -53,6 +60,15 @@ static func sheet_first_frame(sheet: String) -> AtlasTexture:
 	atlas.atlas = tex
 	atlas.region = Rect2(0.0, 0.0, float(meta["w"]), float(meta["h"]))
 	return atlas
+
+
+## 僵尸立绘：优先 assets/ui 立绘，缺失时回退行走精灵表首帧（两者都可能为 null，调用方需兜底）
+static func zombie_portrait(zombie_id: String, walk_sheet: String) -> Texture2D:
+	if ZOMBIE_PAGES.has(zombie_id):
+		var page := load_texture("res://assets/ui/%s.png" % ZOMBIE_PAGES[zombie_id])
+		if page != null:
+			return page
+	return sheet_first_frame(walk_sheet)
 
 
 static func make_label(text: String, font_size: int, color: Color) -> Label:

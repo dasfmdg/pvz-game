@@ -34,13 +34,32 @@ var level_scene := GameConfig.SCENE_DAY
 
 
 ## 载入关卡数据（须在加入场景树前调用；index 越界自动钳制）
-func setup_level(index: int) -> void:
+## selected_plants 为空表示「沿用解锁表」，保证 level_sim 等旧调用路径行为不变
+func setup_level(index: int, selected_plants: Array = []) -> void:
 	level_index = clampi(index, 0, GameConfig.LEVELS.size() - 1)
 	var data: Dictionary = GameConfig.LEVELS[level_index]
 	level_waves = data["waves"]
-	level_plants = GameConfig.plants_for_level(level_index + 1)
+	level_plants = _resolve_level_plants(selected_plants)
 	level_start_sun = int(data["start_sun"])
 	level_scene = String(data.get("scene", GameConfig.SCENE_DAY))
+
+
+## 本关实际携带的卡片：越权 / 重复 / 超额一律丢弃，净化后为空则回退全量，绝不出现零张卡
+func _resolve_level_plants(selected_plants: Array) -> Array:
+	var unlocked := GameConfig.plants_for_level(level_index + 1)
+	if selected_plants.is_empty():
+		return unlocked
+	var limit := GameConfig.seed_slot_limit(level_index + 1)
+	var result: Array[String] = []
+	for raw_id in selected_plants:
+		if result.size() >= limit:
+			break
+		var plant_id := String(raw_id)
+		if unlocked.has(plant_id) and not result.has(plant_id):
+			result.append(plant_id)
+	if result.is_empty():
+		return unlocked
+	return result
 
 
 ## 当前是否为夜间关卡

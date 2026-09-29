@@ -573,6 +573,68 @@ func plants_for_level(level_id: int) -> Array[String]:
 	return result
 
 
+# ---------------- 选卡界面 ----------------
+## 槽位上限 = min(已解锁植物数, SEED_SLOT_BASE + 每 SEED_SLOT_STEP 关 +1, SEED_SLOT_MAX)
+## 早期关卡 unlocked 小于公式值，自动退化为「全带」；后期才出现真正的取舍
+const SEED_SLOT_BASE := 5
+const SEED_SLOT_STEP := 4
+## 与主控数字键 1~9/0 的 10 张上界对齐
+const SEED_SLOT_MAX := 10
+
+## 第几关起需要经过选卡界面（1 基；第 1~6 关仍直接进关，保持快速启动）
+const SEED_SELECT_FROM_LEVEL := 7
+
+## 僵尸显示中文名（图鉴沿用英文 name，此处单独维护一份选卡界面用词）
+const ZOMBIE_NAMES_CN := {
+	"basic": "普通僵尸", "cone": "路障僵尸", "bucket": "铁桶僵尸",
+	"football": "橄榄球僵尸", "door": "铁门僵尸", "flag": "旗帜僵尸",
+}
+
+
+## 本关可携带卡片槽位上限（level_id 为 1 基，返回值恒在 1~SEED_SLOT_MAX）
+func seed_slot_limit(level_id: int) -> int:
+	var unlocked := plants_for_level(level_id).size()
+	var grown := SEED_SLOT_BASE + int(floor(float(maxi(level_id - 1, 0)) / float(SEED_SLOT_STEP)))
+	return clampi(mini(unlocked, mini(grown, SEED_SLOT_MAX)), 1, SEED_SLOT_MAX)
+
+
+## 是否需要先经过选卡界面（index 为 0 基）
+func level_needs_seed_select(index: int) -> bool:
+	return index + 1 >= SEED_SELECT_FROM_LEVEL
+
+
+## 本关会出现的僵尸种类（index 0 基，按首次出现顺序去重）
+## include_flag 默认关闭：大波（huge）自动追加的旗帜僵尸只是节奏标记，不计入种类展示
+func zombies_for_level(index: int, include_flag := false) -> Array[String]:
+	var result: Array[String] = []
+	var data := level_data(index)
+	if data.is_empty():
+		return result
+	for raw_wave in data["waves"] as Array:
+		var wave := raw_wave as Dictionary
+		var kinds: Array = (wave.get("z", []) as Array).duplicate()
+		if include_flag and bool(wave.get("huge", false)):
+			kinds.append("flag")
+		for raw_id in kinds:
+			var zombie_id := String(raw_id)
+			if not include_flag and zombie_id == "flag":
+				continue
+			if not ZOMBIES.has(zombie_id) or result.has(zombie_id):
+				continue
+			result.append(zombie_id)
+	return result
+
+
+## 僵尸中文名：优先中文表，其次 ZOMBIES 英文名，最后回退 id（保证非空）
+func zombie_name_cn(zombie_id: String) -> String:
+	if ZOMBIE_NAMES_CN.has(zombie_id):
+		return String(ZOMBIE_NAMES_CN[zombie_id])
+	var data := zombie_data(zombie_id)
+	if data.has("name"):
+		return String(data["name"])
+	return zombie_id
+
+
 # ---------------- 小推车 ----------------
 const MOWER_X := 520.0
 const MOWER_DRAW := 120.0
