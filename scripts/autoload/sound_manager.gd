@@ -20,6 +20,8 @@ const SFX_VOLUME_DB := -6.0
 const BGM_VOLUME_DB := -16.0
 
 var is_muted := false
+var bgm_volume := 1.0
+var sfx_volume := 1.0
 
 var _streams: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
@@ -91,3 +93,23 @@ func toggle_mute() -> void:
 	set_muted(not is_muted)
 	if not is_muted:
 		play_bgm()
+
+
+## 设置 BGM 音量（线性 0.0~1.0），实时作用于播放器
+func set_bgm_volume(value: float) -> void:
+	bgm_volume = clampf(value, 0.0, 1.0)
+	if _bgm_player != null:
+		_bgm_player.volume_db = BGM_VOLUME_DB + _to_db(bgm_volume)
+
+
+## 设置音效音量（线性 0.0~1.0），实时作用于对象池
+func set_sfx_volume(value: float) -> void:
+	sfx_volume = clampf(value, 0.0, 1.0)
+	var db := SFX_VOLUME_DB + _to_db(sfx_volume)
+	for player in _players:
+		player.volume_db = db
+
+
+## 线性音量 → 分贝；0 时钳制到 -80dB，避免 -inf
+func _to_db(value: float) -> float:
+	return linear_to_db(value) if value > 0.001 else -80.0

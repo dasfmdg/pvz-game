@@ -175,6 +175,84 @@ const WAVES := [
 ## 同一波内单个僵尸的间隔(秒)
 const WAVE_UNIT_GAP := 0.9
 
+# ---------------- 关卡 ----------------
+## id 关卡序号 / name 显示名 / start_sun 初始阳光
+## waves 波次表（结构同 WAVES）/ plants 本关可用植物 id 列表（必须是 PLANTS 的键）
+## 第 1 关直接引用 WAVES，保证既有回归（entity_test / headless_sim）行为完全不变
+const LEVELS := [
+	{
+		"id": 0, "name": "第 1 关 · 前院草坪", "start_sun": START_SUN,
+		"waves": WAVES, "plants": PLANT_ORDER,
+	},
+	{
+		"id": 1, "name": "第 2 关 · 落日光晕", "start_sun": 75,
+		"waves": [
+			{"t": 16.0, "z": ["basic"]},
+			{"t": 46.0, "z": ["basic", "basic"]},
+			{"t": 76.0, "z": ["basic", "cone"]},
+			{"t": 106.0, "z": ["cone", "basic", "basic"]},
+			{"t": 140.0, "z": ["cone", "cone", "basic"], "huge": true},
+			{"t": 176.0, "z": ["basic", "cone", "bucket"]},
+			{"t": 212.0, "z": ["cone", "cone", "bucket", "basic"]},
+			{"t": 250.0, "z": ["basic", "basic", "cone", "cone", "bucket"], "huge": true},
+		],
+		"plants": ["sunflower", "peashooter", "wallnut", "potato_mine", "cherrybomb", "snowpea"],
+	},
+	{
+		"id": 2, "name": "第 3 关 · 夜幕前哨", "start_sun": 50,
+		"waves": [
+			{"t": 14.0, "z": ["basic"]},
+			{"t": 40.0, "z": ["basic", "cone"]},
+			{"t": 68.0, "z": ["cone", "basic", "basic"]},
+			{"t": 96.0, "z": ["cone", "cone", "basic"]},
+			{"t": 128.0, "z": ["cone", "bucket", "basic"], "huge": true},
+			{"t": 162.0, "z": ["basic", "cone", "bucket"]},
+			{"t": 196.0, "z": ["cone", "cone", "bucket", "bucket"]},
+			{"t": 232.0, "z": ["bucket", "bucket", "cone", "basic"]},
+			{"t": 272.0, "z": ["cone", "cone", "bucket", "bucket", "basic"]},
+			{"t": 318.0, "z": ["basic", "basic", "cone", "cone", "bucket", "bucket"], "huge": true},
+		],
+		"plants": ["sunflower", "peashooter", "wallnut", "repeater", "snowpea",
+			"cherrybomb", "jalapeno", "potato_mine"],
+	},
+	{
+		"id": 3, "name": "第 4 关 · 铁桶围城", "start_sun": 50,
+		"waves": [
+			{"t": 14.0, "z": ["basic", "cone"]},
+			{"t": 42.0, "z": ["cone", "basic"]},
+			{"t": 70.0, "z": ["cone", "bucket"]},
+			{"t": 100.0, "z": ["bucket", "cone", "basic"]},
+			{"t": 132.0, "z": ["cone", "cone", "bucket"], "huge": true},
+			{"t": 166.0, "z": ["bucket", "bucket", "cone"]},
+			{"t": 202.0, "z": ["football", "cone", "basic"]},
+			{"t": 240.0, "z": ["bucket", "cone", "cone", "bucket"]},
+			{"t": 280.0, "z": ["football", "bucket", "bucket", "cone"]},
+			{"t": 324.0, "z": ["bucket", "bucket", "bucket", "football", "cone"], "huge": true},
+		],
+		"plants": ["sunflower", "peashooter", "wallnut", "repeater", "threepeater",
+			"snowpea", "cherrybomb", "jalapeno", "potato_mine", "squash"],
+	},
+	{
+		"id": 4, "name": "第 5 关 · 终局决战", "start_sun": 25,
+		"waves": [
+			{"t": 12.0, "z": ["cone", "basic"]},
+			{"t": 38.0, "z": ["bucket", "cone"]},
+			{"t": 66.0, "z": ["football", "cone", "basic"]},
+			{"t": 96.0, "z": ["door", "bucket", "cone"]},
+			{"t": 128.0, "z": ["bucket", "bucket", "football"], "huge": true},
+			{"t": 162.0, "z": ["door", "door", "cone"]},
+			{"t": 198.0, "z": ["football", "football", "cone"]},
+			{"t": 236.0, "z": ["bucket", "door", "bucket", "cone"]},
+			{"t": 276.0, "z": ["football", "bucket", "bucket", "door"]},
+			{"t": 318.0, "z": ["door", "door", "football", "football"], "huge": true},
+			{"t": 362.0, "z": ["bucket", "bucket", "bucket", "football", "door", "cone"]},
+			{"t": 410.0, "z": ["football", "football", "door", "door", "bucket",
+				"bucket", "cone", "cone"], "huge": true},
+		],
+		"plants": PLANT_ORDER,
+	},
+]
+
 # ---------------- 小推车 ----------------
 const MOWER_X := 520.0
 const MOWER_DRAW := 120.0

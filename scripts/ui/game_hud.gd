@@ -94,14 +94,14 @@ func _build_wave_panel(root: Control) -> void:
 	_wave_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8))
 	_wave_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	_wave_label.add_theme_constant_override("outline_size", 6)
-	_wave_label.text = "Wave 0 / %d" % GameConfig.WAVES.size()
+	_wave_label.text = "Wave 0 / %d" % _total_waves()
 	root.add_child(_wave_label)
 
 	_progress = ProgressBar.new()
 	_progress.position = WAVE_BOX_POS + Vector2(0.0, 40.0)
 	_progress.size = Vector2(WAVE_BOX_SIZE.x, 22.0)
 	_progress.min_value = 0.0
-	_progress.max_value = float(GameConfig.WAVES.size())
+	_progress.max_value = float(_total_waves())
 	_progress.value = 0.0
 	_progress.show_percentage = false
 	_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -185,6 +185,13 @@ func _build_overlay(root: Control) -> void:
 
 
 # ---------------- 对外 ----------------
+## 当前关卡总波数（未接管主控时回退全局配置）
+func _total_waves() -> int:
+	if game != null:
+		return game.total_waves()
+	return GameConfig.WAVES.size()
+
+
 func select_card_by_key(keycode: int) -> void:
 	if card_slot == null:
 		return

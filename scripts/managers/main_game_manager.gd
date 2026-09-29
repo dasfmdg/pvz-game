@@ -3,6 +3,9 @@ extends Node2D
 ## 主控：装配世界层与子系统、阳光经济、统一输入路由、胜负判定
 ## 参考工程对应：scripts/manager/main_game_manager.gd（子管理器装配 + 统一调度）
 
+## 关卡结算需要重开时发出（由界面路由接管重载关卡）
+signal restart_requested()
+
 var plants_root: Node2D = null
 var mowers_root: Node2D = null
 var zombies_root: Node2D = null
@@ -21,11 +24,31 @@ var killed := 0
 var is_paused := false
 var is_over := false
 
+## 当前关卡数据：默认第 1 关（与既有回归行为完全一致）
+var level_index := 0
+var level_waves: Array = GameConfig.WAVES
+var level_plants: Array = GameConfig.PLANT_ORDER
+var level_start_sun := GameConfig.START_SUN
+
+
+## 载入关卡数据（须在加入场景树前调用；index 越界自动钳制）
+func setup_level(index: int) -> void:
+	level_index = clampi(index, 0, GameConfig.LEVELS.size() - 1)
+	var data: Dictionary = GameConfig.LEVELS[level_index]
+	level_waves = data["waves"]
+	level_plants = data["plants"]
+	level_start_sun = int(data["start_sun"])
+
+
+## 当前关卡总波数
+func total_waves() -> int:
+	return level_waves.size()
+
 
 func _ready() -> void:
 	_create_layers()
 	_create_subsystems()
-	sun = GameConfig.START_SUN
+	sun = level_start_sun
 	EventBus.sun_changed.emit(sun)
 	SoundManager.play_bgm()
 
@@ -109,7 +132,7 @@ func _on_key_pressed(key: InputEventKey) -> void:
 			grid_manager.clear_selection()
 		KEY_R:
 			if is_over:
-				get_tree().reload_current_scene()
+				restart_requested.emit()
 		KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0:
 			if hud != null:
 				hud.select_card_by_key(key.keycode)

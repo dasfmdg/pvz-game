@@ -32,8 +32,9 @@ func _process(delta: float) -> void:
 
 
 func _build_cards() -> void:
-	for index in GameConfig.PLANT_ORDER.size():
-		var plant_id: String = GameConfig.PLANT_ORDER[index]
+	var plants: Array = game.level_plants if game != null else GameConfig.PLANT_ORDER
+	for index in plants.size():
+		var plant_id: String = String(plants[index])
 		var card := CardItem.new()
 		card.setup(plant_id)
 		card.position = Vector2(float(index) * (CardItem.CARD_W + CARD_GAP), 0.0)

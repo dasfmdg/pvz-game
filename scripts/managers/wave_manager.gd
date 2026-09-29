@@ -63,8 +63,8 @@ func alive_count() -> int:
 
 # ---------------- 投放 ----------------
 func _launch_due_waves() -> void:
-	while wave_index < GameConfig.WAVES.size():
-		var wave: Dictionary = GameConfig.WAVES[wave_index]
+	while wave_index < game.level_waves.size():
+		var wave: Dictionary = game.level_waves[wave_index]
 		if _elapsed < float(wave["t"]):
 			return
 		_launch_wave(wave_index, wave)
@@ -77,7 +77,7 @@ func _launch_wave(index: int, wave: Dictionary) -> void:
 	if is_huge:
 		types.push_front("flag")
 		game.play_sfx("zombies_are_coming")
-	EventBus.wave_started.emit(index + 1, GameConfig.WAVES.size(), is_huge)
+	EventBus.wave_started.emit(index + 1, game.total_waves(), is_huge)
 	for i in types.size():
 		_pending.append({
 			"t": _elapsed + float(i) * GameConfig.WAVE_UNIT_GAP,
@@ -100,7 +100,7 @@ func _release_pending() -> void:
 
 
 func _check_all_spawned() -> void:
-	if all_spawned or wave_index < GameConfig.WAVES.size() or not _pending.is_empty():
+	if all_spawned or wave_index < game.level_waves.size() or not _pending.is_empty():
 		return
 	all_spawned = true
 	EventBus.all_waves_spawned.emit()
