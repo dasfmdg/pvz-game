@@ -7,13 +7,16 @@ enum E_State { MENU, LEVEL_SELECT, ALMANAC, SETTINGS, GAME }
 
 const GAME_OVER_LAYER := 20
 
-## 全通关（最后一关胜利）专属结算画面：贴图 + 中文标题 + 统计
+## 全通关（最后一关胜利）专属结算画面：英文原图 + 中文译句 + 标题 + 统计
 const FINAL_WIN_IMAGE_PATH := "res://assets/ui/final_win.png"
-const FINAL_WIN_IMAGE_HEIGHT := 470.0
-const FINAL_WIN_IMAGE_TOP := 90.0
-const FINAL_WIN_TITLE_TOP := 590.0
-const FINAL_WIN_STATS_TOP := 690.0
+const FINAL_WIN_IMAGE_HEIGHT := 400.0
+const FINAL_WIN_IMAGE_TOP := 80.0
+const FINAL_WIN_CAPTION_TOP := 498.0
+const FINAL_WIN_TITLE_TOP := 552.0
+const FINAL_WIN_STATS_TOP := 644.0
 const FINAL_WIN_TITLE_COLOR := Color(1.0, 0.9, 0.45)
+## 原图英文文案 "Congratulations! You Ate Zombie Brains!" 的中文译句
+const FINAL_WIN_CAPTION_TEXT := "恭喜！你吃掉了僵尸的脑子！"
 
 var state := E_State.MENU
 var game: MainGameManager = null
@@ -24,6 +27,7 @@ var _ui_root: Control = null
 var _overlay_layer: CanvasLayer = null
 var _overlay_panel: Control = null
 var _final_win_image: TextureRect = null
+var _final_win_caption: Label = null
 var _final_win_title: Label = null
 var _final_win_stats: Label = null
 
@@ -103,9 +107,12 @@ func is_game_over_visible() -> bool:
 	return _overlay_panel != null and _overlay_panel.visible
 
 
-## 最后一关全通关结算画面是否可见
+## 全通关结算画面是否可见（图片 / 译句 / 标题 / 统计必须同步显示）
 func is_final_win_visible() -> bool:
-	return _final_win_image != null and _final_win_image.visible
+	return _final_win_image != null and _final_win_image.visible \
+		and _final_win_caption != null and _final_win_caption.visible \
+		and _final_win_title != null and _final_win_title.visible \
+		and _final_win_stats != null and _final_win_stats.visible
 
 
 # ---------------- 内部 ----------------
@@ -150,7 +157,7 @@ func _build_game_over_overlay() -> void:
 	_build_final_win_banner()
 
 
-## 全通关专属结算：图片居中 + 中文标题 + 累计击杀统计（默认隐藏）
+## 全通关专属结算：英文原图 + 中文译句 + 中文标题 + 累计击杀统计（默认隐藏）
 func _build_final_win_banner() -> void:
 	_final_win_image = UiKit.make_texture(FINAL_WIN_IMAGE_PATH)
 	# make_texture 默认铺满父容器，这里改回左上锚点后按等比尺寸居中摆放
@@ -161,6 +168,13 @@ func _build_final_win_banner() -> void:
 			GameConfig.CANVAS_W * 0.5 - _final_win_image.size.x * 0.5, FINAL_WIN_IMAGE_TOP)
 	_final_win_image.visible = false
 	_overlay_panel.add_child(_final_win_image)
+
+	_final_win_caption = UiKit.make_label(FINAL_WIN_CAPTION_TEXT, 30, Color(0.95, 1.0, 0.9))
+	_final_win_caption.size = Vector2(GameConfig.CANVAS_W, 40.0)
+	_final_win_caption.position = Vector2(0.0, FINAL_WIN_CAPTION_TOP)
+	_final_win_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_final_win_caption.visible = false
+	_overlay_panel.add_child(_final_win_caption)
 
 	_final_win_title = UiKit.make_label("全部关卡通关！", 64, FINAL_WIN_TITLE_COLOR)
 	_final_win_title.size = Vector2(GameConfig.CANVAS_W, 80.0)
@@ -177,7 +191,7 @@ func _build_final_win_banner() -> void:
 	_overlay_panel.add_child(_final_win_stats)
 
 
-## final_win.png 是 757×870 白底图，等比缩放避免文字变形
+## final_win.png 是 757×870 透明底绿字图，等比缩放避免文字变形
 func _image_ratio(path: String) -> float:
 	var tex := UiKit.load_texture(path)
 	if tex != null:
@@ -210,11 +224,13 @@ func is_final_level() -> bool:
 	return current_level >= GameConfig.LEVELS.size() - 1
 
 
-## 全通关结算：显示专属贴图/标题/统计，并让 HUD 让出中央区域
+## 全通关结算：显示专属贴图/译句/标题/统计，并让 HUD 让出中央区域
 ## （HUD 每个关卡重新构建，隐藏无需回滚）
 func _set_final_win_visible(show_flag: bool) -> void:
 	if _final_win_image != null:
 		_final_win_image.visible = show_flag
+	if _final_win_caption != null:
+		_final_win_caption.visible = show_flag
 	if _final_win_title != null:
 		_final_win_title.visible = show_flag
 	if _final_win_stats != null:
