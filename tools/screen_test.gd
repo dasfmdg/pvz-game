@@ -62,13 +62,46 @@ func _test_router() -> void:
 			router.state == MainRouter.E_State.LEVEL_SELECT \
 			and router.current_screen is LevelSelectScreen)
 	var select := router.current_screen as LevelSelectScreen
-	_check("关卡选择含 5 个按钮", select != null and select.level_buttons.size() == 5)
+	_check("关卡选择含 30 个按钮",
+			select != null and select.level_buttons.size() == GameConfig.LEVELS.size())
 	var lock_consistent := true
 	if select != null:
 		for index in select.level_buttons.size():
 			if select.level_buttons[index].disabled == SaveManager.is_unlocked(index):
 				lock_consistent = false
 	_check("锁定态与存档一致", lock_consistent)
+
+	# 30 关卡片应为 5 列 × 6 行网格，整体不超出画布，且纵向需要滚动
+	var col_step := LevelSelectScreen.CARD_W + LevelSelectScreen.CARD_GAP
+	var row_step := LevelSelectScreen.CARD_H + LevelSelectScreen.CARD_GAP
+	var grid_ok := select != null and select.level_buttons.size() == GameConfig.LEVELS.size()
+	if grid_ok:
+		var first: Button = select.level_buttons[0]
+		var fifth: Button = select.level_buttons[4]
+		var sixth: Button = select.level_buttons[5]
+		var last: Button = select.level_buttons[29]
+		grid_ok = is_equal_approx(first.size.x, LevelSelectScreen.CARD_W) \
+			and is_equal_approx(fifth.global_position.x - first.global_position.x, 4.0 * col_step) \
+			and is_equal_approx(sixth.global_position.y - first.global_position.y, row_step) \
+			and is_equal_approx(last.global_position.x - first.global_position.x, 4.0 * col_step) \
+			and is_equal_approx(last.global_position.y - first.global_position.y, 5.0 * row_step)
+	_check("30 关卡片按 5 列 × 6 行排布", grid_ok)
+
+	var scrollable := select != null and select.level_buttons.size() == GameConfig.LEVELS.size()
+	if scrollable:
+		var last_card_bottom: float = select.level_buttons[29].global_position.y \
+			+ LevelSelectScreen.CARD_H
+		var view_bottom := GameConfig.CANVAS_H - LevelSelectScreen.GRID_BOTTOM_MARGIN
+		scrollable = last_card_bottom > view_bottom
+	_check("关卡网格超出可视区（需要滚动）", scrollable)
+
+	var inside_canvas := select != null
+	if inside_canvas:
+		for button in select.level_buttons:
+			if button.global_position.x < 0.0 \
+					or button.global_position.x + button.size.x > GameConfig.CANVAS_W:
+				inside_canvas = false
+	_check("卡片水平方向不超出画布", inside_canvas)
 
 	router.start_level(0)
 	await get_tree().process_frame
@@ -120,7 +153,7 @@ func _test_save() -> void:
 # ---------------- 关卡数据 ----------------
 func _test_levels() -> void:
 	print("[TEST] --- 关卡数据 ---")
-	_check("关卡数量为 5", GameConfig.LEVELS.size() == 5)
+	_check("关卡数量为 30", GameConfig.LEVELS.size() == 30)
 	for i in GameConfig.LEVELS.size():
 		var level: Dictionary = GameConfig.LEVELS[i]
 		var plants_ok := true
