@@ -140,3 +140,11 @@ func is_cleared(index: int) -> bool:
 
 func best_kills_of(index: int) -> int:
 	return int(best_kills.get(index, 0))
+
+
+## 累计最佳击杀（全通关结算统计用）
+func total_best_kills() -> int:
+	var total := 0
+	for key in best_kills.keys():
+		total += int(best_kills[key])
+	return total

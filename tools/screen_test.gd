@@ -118,6 +118,7 @@ func _test_router() -> void:
 	await get_tree().process_frame
 	_check("胜利后写入存档", SaveManager.best_kills.has(0))
 	_check("结算遮罩出现", router.is_game_over_visible())
+	_check("普通关卡不显示全通关画面", not router.is_final_win_visible())
 
 	router.return_to_level_select()
 	await get_tree().process_frame
@@ -138,6 +139,25 @@ func _test_router() -> void:
 	router.return_to_level_select()
 	await get_tree().process_frame
 	await get_tree().process_frame
+
+	# 最后一关胜利应显示专属全通关结算画面
+	router.start_level(GameConfig.LEVELS.size() - 1)
+	await get_tree().process_frame
+	var final_game: MainGameManager = router.game
+	if final_game != null:
+		final_game.end_game(true)
+	await get_tree().process_frame
+	_check("最后一关胜利显示全通关画面",
+			final_game != null and router.is_final_win_visible())
+	_check("全通关画面叠加在结算遮罩之上",
+			router.is_game_over_visible() and router.is_final_win_visible())
+	var final_hud_hidden := final_game != null and final_game.hud != null \
+		and not final_game.hud.is_plain_game_over_visible()
+	_check("全通关时 HUD 普通结算文案让位", final_hud_hidden)
+	router.return_to_level_select()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("离开游戏态后全通关画面隐藏", not router.is_final_win_visible())
 
 	router.queue_free()
 	await get_tree().process_frame
@@ -162,6 +182,9 @@ func _test_save() -> void:
 	_check("记录最佳击杀", SaveManager.best_kills_of(0) == 7)
 	SaveManager.mark_cleared(0, 3)
 	_check("最佳击杀取较大值", SaveManager.best_kills_of(0) == 7)
+	SaveManager.best_kills = {0: 7, 1: 5}
+	_check("累计击杀为各关最佳击杀之和", SaveManager.total_best_kills() == 12)
+	_check("无记录时累计击杀为 0", SaveManager.best_kills_of(29) == 0)
 
 
 # ---------------- 关卡数据 ----------------

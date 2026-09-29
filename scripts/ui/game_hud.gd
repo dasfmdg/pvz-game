@@ -224,6 +224,19 @@ func _total_waves() -> int:
 	return GameConfig.WAVES.size()
 
 
+## 全通关模式：隐藏普通胜负标题与提示，把中央区域让给专属结算画面
+func set_final_win_mode(enabled: bool) -> void:
+	if _overlay_title != null:
+		_overlay_title.visible = not enabled
+	if _overlay_hint != null:
+		_overlay_hint.visible = not enabled
+
+
+## 普通结算标题/提示是否可见（全通关模式下应为 false）
+func is_plain_game_over_visible() -> bool:
+	return _overlay_title != null and _overlay_title.visible
+
+
 func select_card_by_key(keycode: int) -> void:
 	if card_slot == null:
 		return

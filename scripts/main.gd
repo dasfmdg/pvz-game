@@ -7,6 +7,14 @@ enum E_State { MENU, LEVEL_SELECT, ALMANAC, SETTINGS, GAME }
 
 const GAME_OVER_LAYER := 20
 
+## 全通关（最后一关胜利）专属结算画面：贴图 + 中文标题 + 统计
+const FINAL_WIN_IMAGE_PATH := "res://assets/ui/final_win.png"
+const FINAL_WIN_IMAGE_HEIGHT := 470.0
+const FINAL_WIN_IMAGE_TOP := 90.0
+const FINAL_WIN_TITLE_TOP := 590.0
+const FINAL_WIN_STATS_TOP := 690.0
+const FINAL_WIN_TITLE_COLOR := Color(1.0, 0.9, 0.45)
+
 var state := E_State.MENU
 var game: MainGameManager = null
 var current_screen: Control = null
@@ -15,6 +23,9 @@ var current_level := 0
 var _ui_root: Control = null
 var _overlay_layer: CanvasLayer = null
 var _overlay_panel: Control = null
+var _final_win_image: TextureRect = null
+var _final_win_title: Label = null
+var _final_win_stats: Label = null
 
 
 func _ready() -> void:
@@ -92,6 +103,11 @@ func is_game_over_visible() -> bool:
 	return _overlay_panel != null and _overlay_panel.visible
 
 
+## 最后一关全通关结算画面是否可见
+func is_final_win_visible() -> bool:
+	return _final_win_image != null and _final_win_image.visible
+
+
 # ---------------- 内部 ----------------
 func _set_screen(screen: Control) -> void:
 	if current_screen != null and is_instance_valid(current_screen):
@@ -131,6 +147,45 @@ func _build_game_over_overlay() -> void:
 	back.pressed.connect(return_to_level_select)
 	_overlay_panel.add_child(back)
 
+	_build_final_win_banner()
+
+
+## 全通关专属结算：图片居中 + 中文标题 + 累计击杀统计（默认隐藏）
+func _build_final_win_banner() -> void:
+	_final_win_image = UiKit.make_texture(FINAL_WIN_IMAGE_PATH)
+	# make_texture 默认铺满父容器，这里改回左上锚点后按等比尺寸居中摆放
+	_final_win_image.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_final_win_image.size = Vector2(
+			FINAL_WIN_IMAGE_HEIGHT * _image_ratio(FINAL_WIN_IMAGE_PATH), FINAL_WIN_IMAGE_HEIGHT)
+	_final_win_image.position = Vector2(
+			GameConfig.CANVAS_W * 0.5 - _final_win_image.size.x * 0.5, FINAL_WIN_IMAGE_TOP)
+	_final_win_image.visible = false
+	_overlay_panel.add_child(_final_win_image)
+
+	_final_win_title = UiKit.make_label("全部关卡通关！", 64, FINAL_WIN_TITLE_COLOR)
+	_final_win_title.size = Vector2(GameConfig.CANVAS_W, 80.0)
+	_final_win_title.position = Vector2(0.0, FINAL_WIN_TITLE_TOP)
+	_final_win_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_final_win_title.visible = false
+	_overlay_panel.add_child(_final_win_title)
+
+	_final_win_stats = UiKit.make_label("", 32, Color(1.0, 1.0, 0.9))
+	_final_win_stats.size = Vector2(GameConfig.CANVAS_W, 44.0)
+	_final_win_stats.position = Vector2(0.0, FINAL_WIN_STATS_TOP)
+	_final_win_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_final_win_stats.visible = false
+	_overlay_panel.add_child(_final_win_stats)
+
+
+## final_win.png 是 757×870 白底图，等比缩放避免文字变形
+func _image_ratio(path: String) -> float:
+	var tex := UiKit.load_texture(path)
+	if tex != null:
+		var size := tex.get_size()
+		if size.y > 0.0:
+			return size.x / size.y
+	return 1.0
+
 
 func _show_game_over() -> void:
 	if _overlay_panel != null:
@@ -140,12 +195,36 @@ func _show_game_over() -> void:
 func _hide_game_over() -> void:
 	if _overlay_panel != null:
 		_overlay_panel.visible = false
+	_set_final_win_visible(false)
 
 
 func _on_game_over(is_win: bool, killed: int) -> void:
 	if is_win:
 		SaveManager.mark_cleared(current_level, killed)
+	_set_final_win_visible(is_win and is_final_level())
 	_show_game_over()
+
+
+## 是否处于最后一关
+func is_final_level() -> bool:
+	return current_level >= GameConfig.LEVELS.size() - 1
+
+
+## 全通关结算：显示专属贴图/标题/统计，并让 HUD 让出中央区域
+## （HUD 每个关卡重新构建，隐藏无需回滚）
+func _set_final_win_visible(show_flag: bool) -> void:
+	if _final_win_image != null:
+		_final_win_image.visible = show_flag
+	if _final_win_title != null:
+		_final_win_title.visible = show_flag
+	if _final_win_stats != null:
+		_final_win_stats.visible = show_flag
+	if not show_flag:
+		return
+	if _final_win_stats != null:
+		_final_win_stats.text = "累计最佳击杀：%d" % SaveManager.total_best_kills()
+	if game != null and game.hud != null:
+		game.hud.set_final_win_mode(true)
 
 
 func _on_restart() -> void:
