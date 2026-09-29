@@ -20,13 +20,6 @@ const PLANT_PAGES := {
 	"jalapeno": "page_jalapeno",
 }
 
-## 有独立立绘的僵尸（其余走精灵表首帧兜底）
-const ZOMBIE_PAGES := {
-	"basic": "page_zombie",
-	"cone": "page_conehead",
-	"bucket": "page_buckethead",
-}
-
 var plant_cards: Array[Control] = []
 var zombie_cards: Array[Control] = []
 
@@ -127,7 +120,8 @@ func _build_zombie_cards(grid: GridContainer) -> void:
 	for raw_id in GameConfig.ZOMBIES.keys():
 		var zombie_id := String(raw_id)
 		var data := GameConfig.zombie_data(zombie_id)
-		var art := _zombie_art(zombie_id, data)
+		# 立绘映射与兜底逻辑统一走 UiKit.zombie_portrait（与选卡界面共用一份）
+		var art := UiKit.zombie_portrait(zombie_id, String(data.get("walk", "")))
 		var lines := [
 			"血量：%d" % int(data.get("hp", 0)),
 			"速度：%.0f" % float(data.get("speed", 0.0)),
@@ -135,15 +129,6 @@ func _build_zombie_cards(grid: GridContainer) -> void:
 		var card := _make_card(String(data.get("name", zombie_id)), lines, art)
 		grid.add_child(card)
 		zombie_cards.append(card)
-
-
-func _zombie_art(zombie_id: String, data: Dictionary) -> Texture2D:
-	if ZOMBIE_PAGES.has(zombie_id):
-		var page_tex := UiKit.load_texture("res://assets/ui/%s.png" % ZOMBIE_PAGES[zombie_id])
-		if page_tex != null:
-			return page_tex
-	var atlas := UiKit.sheet_first_frame(String(data.get("walk", "")))
-	return atlas
 
 
 # ---------------- 卡片外观 ----------------
