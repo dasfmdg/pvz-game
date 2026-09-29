@@ -3,7 +3,10 @@ extends RefCounted
 ## 界面层公共工具：中文字体、贴图安全加载、常用控件构建
 ## 全部界面用代码构建 Control 节点，不依赖 .tscn 手写节点树
 
-## 中文字体候选（按系统可用性回退，Desktop 上取系统字体，避免内置字体缺中文字形）
+## 打包中文字体（Web 导出环境无系统字体，必须自带字形子集）
+const PACKED_FONT_PATH := "res://assets/fonts/pvz_ui.ttf"
+
+## 中文字体候选（桌面端回退：按系统可用性取系统字体）
 const CJK_FONTS: Array[String] = [
 	"Microsoft YaHei", "Microsoft YaHei UI", "SimHei", "SimSun",
 	"PingFang SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "sans-serif",
@@ -12,10 +15,15 @@ const CJK_FONTS: Array[String] = [
 static var _font: Font = null
 
 
-## 中文字体（惰性创建并缓存）
+## 中文字体（惰性创建并缓存）：优先打包字体，缺失时回退系统字体
 static func font() -> Font:
 	if _font != null:
 		return _font
+	if ResourceLoader.exists(PACKED_FONT_PATH):
+		var packed := load(PACKED_FONT_PATH) as Font
+		if packed != null:
+			_font = packed
+			return _font
 	var system_font := SystemFont.new()
 	var names := PackedStringArray()
 	for font_name in CJK_FONTS:
