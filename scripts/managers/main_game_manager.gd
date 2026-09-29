@@ -29,6 +29,8 @@ var level_index := 0
 var level_waves: Array = GameConfig.WAVES
 var level_plants: Array = GameConfig.PLANT_ORDER
 var level_start_sun := GameConfig.START_SUN
+## 当前关卡场景（day / night），默认白天，保证未装载关卡数据的回归行为不变
+var level_scene := GameConfig.SCENE_DAY
 
 
 ## 载入关卡数据（须在加入场景树前调用；index 越界自动钳制）
@@ -36,8 +38,14 @@ func setup_level(index: int) -> void:
 	level_index = clampi(index, 0, GameConfig.LEVELS.size() - 1)
 	var data: Dictionary = GameConfig.LEVELS[level_index]
 	level_waves = data["waves"]
-	level_plants = data["plants"]
+	level_plants = GameConfig.plants_for_level(level_index + 1)
 	level_start_sun = int(data["start_sun"])
+	level_scene = String(data.get("scene", GameConfig.SCENE_DAY))
+
+
+## 当前是否为夜间关卡
+func is_night() -> bool:
+	return level_scene == GameConfig.SCENE_NIGHT
 
 
 ## 当前关卡总波数
@@ -58,6 +66,9 @@ func _create_layers() -> void:
 			GameConfig.CANVAS_W, GameConfig.CANVAS_H)
 	background.position = Vector2(GameConfig.CANVAS_W * 0.5, GameConfig.CANVAS_H * 0.5)
 	background.z_index = -100
+	# 夜间关卡对草坪做冷色调处理：只影响背景，不压暗实体与界面
+	if is_night():
+		background.modulate = GameConfig.NIGHT_LAWN_TINT
 	add_child(background)
 
 	plants_root = _make_layer("PlantsRoot", 10)

@@ -37,8 +37,11 @@ godot --headless --path . --quit-after 400
   残血失头/断臂破损外观、寒冰减速染色、烧焦动画。
 - **30 关关卡**（数据对齐 `../pvzcode/js/levels-data.js`，逐关逐波一致）：每关 3~9 波，含 `huge` 大波
   （自动追加旗帜僵尸与横幅提示），难度 1~8，初始阳光 50/75/100；5 行 × 9 列草坪，每行一台一次性小推车。
-- 卡片每关全量开放 11 种植物（源数据的 `unlockLevel` 逐关解锁未接入）。
-- 阳光经济：开局 50，天降阳光每 10 秒一颗，向日葵每 12 秒产出一颗。
+- **植物逐关解锁**：按源数据 `unlockLevel`（坚果 3 / 土豆雷 4 / 樱桃 5 / 双发 7 / 辣椒 9 / 寒冰 11 /
+  倭瓜 13 / 食人花 15 / 三重 17）生成每关卡片，第 1 关仅向日葵与豌豆射手，第 17 关起全量 11 种。
+- **夜景关卡 6 关**（第 16/21/24/26/28/30 关，源数据 `scene: night`）：草坪转为夜色冷色调，
+  且不再天降阳光，只能靠向日葵产阳光。
+- 阳光经济：开局 50，天降阳光每 10 秒一颗（夜间不下），向日葵每 12 秒产出一颗。
 
 ## 目录结构
 
@@ -55,7 +58,8 @@ assets/                     精灵表 PNG、WAV 音效、卡片图、草坪背�
 tools/gen_sprite_meta.py    从 ../pvzcode/js/sprites-meta.js 生成 scripts/data/sprite_meta.gd
 tools/headless_sim.*        无窗口整局模拟（自动采集阳光 + 布阵，验证波次/胜负链路）
 tools/entity_test.*         无窗口实体层单元校验（87 项断言：顶具/破损/减速/各类植物行为）
-tools/screen_test.*         无窗口界面层校验（116 项断言：路由、存档、30 关数据、图鉴、设置）
+tools/screen_test.*         无窗口界面层校验（132 项断言：路由、存档、30 关数据与解锁表、图鉴、设置）
+tools/level_sim.*           无窗口 30 关逐关模拟（逐关自动布阵打到结束，验证波次/胜负链路不卡死）
 ```
 
 ## 校验与测试
@@ -69,6 +73,9 @@ godot --headless --fixed-fps 60 --quit-after 30000 --path . res://tools/headless
 
 # 实体层单测：输出 PASS/FAIL 断言清单
 godot --headless --fixed-fps 60 --quit-after 2400 --path . res://tools/entity_test.tscn
+
+# 30 关逐关模拟：逐关装载关卡数据、自动布阵打到结束，输出每关胜负与异常项
+godot --headless --fixed-fps 60 --path . res://tools/level_sim.tscn
 ```
 
 ## 数值调整
@@ -89,8 +96,7 @@ python tools/gen_sprite_meta.py ../pvzcode/js/sprites-meta.js scripts/data/sprit
 
 ## 待办
 
-- 夜景表现：源数据第 16/21/24/26/28/30 关为 `scene: night`，当前未做夜色背景与阳光产出限制。
-- 植物逐关解锁：源数据 `unlockLevel`（坚果 3 / 土豆雷 4 / 樱桃 5 / 双发 7 / 辣椒 9 / 寒冰 11 /
-  倭瓜 13 / 食人花 15 / 三重 17）未接入，当前每关全量开放。
 - 关卡立绘仅 1~5 关（`assets/ui/level1~5.png`），其余关卡在关卡选择页用编号底板兜底。
-- 30 关未逐关人工通关，目前只做了逐关数据校验（`tools/screen_test.gd`）与第 1 关整局模拟。
+- 30 关未逐关人工通关：已用 `tools/level_sim.gd` 做逐关自动布阵模拟（30 关均能正常判出胜负、
+  无脚本错误），但自动模拟不等于真人可通关性验证。
+- 夜景目前只做了草坪冷色调，未加月亮/路灯等美术元素。

@@ -20,6 +20,9 @@ func _process(delta: float) -> void:
 	if _sky_timer > 0.0:
 		return
 	_sky_timer = GameConfig.SKY_SUN_INTERVAL
+	# 夜间关卡不天降阳光（GameConfig.NIGHT_SKY_SUN_ENABLED 可放开）
+	if game.is_night() and not GameConfig.NIGHT_SKY_SUN_ENABLED:
+		return
 	_spawn_sky_sun()
 
 

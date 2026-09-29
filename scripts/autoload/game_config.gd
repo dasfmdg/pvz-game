@@ -20,6 +20,8 @@ const START_SUN := 50
 const SKY_SUN_INTERVAL := 10.0
 const SKY_SUN_FIRST := 10.0
 const SKY_SUN_VALUE := 50
+## 夜间关卡是否仍天降阳光（原作夜间不下阳光，只能靠向日葵产出）
+const NIGHT_SKY_SUN_ENABLED := false
 const SUNFLOWER_SUN_VALUE := 50
 const SUN_LIFETIME := 12.0
 
@@ -78,6 +80,14 @@ const PLANT_ORDER: Array[String] = [
 	"sunflower", "peashooter", "wallnut", "cherrybomb", "repeater", "jalapeno",
 	"snowpea", "threepeater", "squash", "chomper", "potato_mine",
 ]
+
+## 植物解锁关卡（1 基，语义与参考实现 js/game.js isPlantAvailable 一致：unlockLevel <= 关卡序号）
+## 0 表示开局即拥有；未列出的植物按 0 处理
+const PLANT_UNLOCK := {
+	"sunflower": 0, "peashooter": 0, "wallnut": 3, "potato_mine": 4, "cherrybomb": 5,
+	"repeater": 7, "jalapeno": 9, "snowpea": 11, "squash": 13, "chomper": 15,
+	"threepeater": 17,
+}
 
 ## 植物行为参数
 const PLANT_BEHAVIOR := {
@@ -171,13 +181,13 @@ const WAVE_UNIT_GAP := 0.9
 # ---------------- 关卡 ----------------
 ## 30 关数据与 ../pvzcode/js/levels-data.js 逐关逐波对齐
 ## id 关卡序号(0 基) / name 显示名 / start_sun 初始阳光 / difficulty 难度(1~8)
-## waves 波次表（结构同 WAVES）/ plants 本关可用植物 id 列表（必须是 PLANTS 的键）
-## 说明：源数据的 scene(day/night) 未保留，夜景表现本期未实现；植物按全量开放
+## waves 波次表（结构同 WAVES）/ scene 场景（缺省 "day"）
+## 可用植物不逐关硬编码，由 PLANT_UNLOCK + plants_for_level(关卡序号) 生成
 ## 第 1 关直接引用 WAVES，保证既有回归（entity_test / headless_sim）行为可复用
 const LEVELS := [
 	{
 		"id": 0, "name": "第1关 · 初次防守", "start_sun": 100, "difficulty": 1,
-		"waves": WAVES, "plants": PLANT_ORDER,
+		"waves": WAVES,
 	},
 	{
 		"id": 1, "name": "第2关 · 路障来袭", "start_sun": 75, "difficulty": 1,
@@ -188,7 +198,6 @@ const LEVELS := [
 			{"t": 125.0, "z": ["basic", "basic", "cone"]},
 			{"t": 160.0, "z": ["basic", "cone", "basic", "cone"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 2, "name": "第3关 · 铁桶初现", "start_sun": 75, "difficulty": 2,
@@ -201,7 +210,6 @@ const LEVELS := [
 			{"t": 195.0, "z": ["basic", "cone", "bucket"]},
 			{"t": 235.0, "z": ["cone", "basic", "cone", "bucket"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 3, "name": "第4关 · 多路来犯", "start_sun": 50, "difficulty": 2,
@@ -214,7 +222,6 @@ const LEVELS := [
 			{"t": 198.0, "z": ["basic", "cone", "bucket", "basic"]},
 			{"t": 240.0, "z": ["cone", "cone", "bucket", "basic"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 4, "name": "第5关 · 橄榄球狂潮", "start_sun": 50, "difficulty": 3,
@@ -227,7 +234,6 @@ const LEVELS := [
 			{"t": 186.0, "z": ["football", "football", "basic"]},
 			{"t": 225.0, "z": ["cone", "bucket", "football", "cone"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 5, "name": "第6关 · 铁门入侵", "start_sun": 50, "difficulty": 3,
@@ -240,7 +246,6 @@ const LEVELS := [
 			{"t": 186.0, "z": ["door", "door", "basic", "cone"]},
 			{"t": 225.0, "z": ["cone", "bucket", "door", "football"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 6, "name": "第7关 · 混编军团", "start_sun": 50, "difficulty": 3,
@@ -253,7 +258,6 @@ const LEVELS := [
 			{"t": 178.0, "z": ["cone", "door", "bucket", "football"]},
 			{"t": 214.0, "z": ["door", "door", "football", "bucket"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 7, "name": "第8关 · 密集攻势", "start_sun": 50, "difficulty": 4,
@@ -266,7 +270,6 @@ const LEVELS := [
 			{"t": 174.0, "z": ["bucket", "door", "door", "football"]},
 			{"t": 212.0, "z": ["cone", "football", "bucket", "door", "basic"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 8, "name": "第9关 · 铁桶堡垒", "start_sun": 50, "difficulty": 4,
@@ -279,7 +282,6 @@ const LEVELS := [
 			{"t": 174.0, "z": ["bucket", "bucket", "door", "football"]},
 			{"t": 212.0, "z": ["cone", "football", "bucket", "door", "bucket"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 9, "name": "第10关 · 十关试炼", "start_sun": 50, "difficulty": 4,
@@ -293,7 +295,6 @@ const LEVELS := [
 			{"t": 212.0, "z": ["bucket", "door", "football", "bucket", "door"], "huge": true},
 			{"t": 258.0, "z": ["cone", "bucket", "door", "football", "basic", "bucket", "basic", "door"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 10, "name": "第11关 · 寒冰射手", "start_sun": 100, "difficulty": 4,
@@ -305,7 +306,6 @@ const LEVELS := [
 			{"t": 140.0, "z": ["football", "bucket", "door", "cone", "basic"]},
 			{"t": 178.0, "z": ["cone", "door", "bucket", "football", "basic"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 11, "name": "第12关 · 双重火力", "start_sun": 75, "difficulty": 4,
@@ -318,7 +318,6 @@ const LEVELS := [
 			{"t": 174.0, "z": ["bucket", "door", "football", "bucket", "basic"], "huge": true},
 			{"t": 214.0, "z": ["cone", "football", "door", "bucket", "football", "cone"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 12, "name": "第13关 · 倭瓜登场", "start_sun": 75, "difficulty": 4,
@@ -331,7 +330,6 @@ const LEVELS := [
 			{"t": 172.0, "z": ["door", "bucket", "football", "cone", "basic"], "huge": true},
 			{"t": 210.0, "z": ["bucket", "door", "football", "bucket", "cone", "door"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 13, "name": "第14关 · 食人巨口", "start_sun": 75, "difficulty": 5,
@@ -344,7 +342,6 @@ const LEVELS := [
 			{"t": 172.0, "z": ["cone", "bucket", "football", "door", "bucket"], "huge": true},
 			{"t": 208.0, "z": ["door", "football", "bucket", "door", "football", "cone"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 14, "name": "第15关 · 绿植大赏", "start_sun": 100, "difficulty": 5,
@@ -357,10 +354,9 @@ const LEVELS := [
 			{"t": 168.0, "z": ["door", "bucket", "football", "cone", "door", "basic"], "huge": true},
 			{"t": 206.0, "z": ["bucket", "football", "door", "bucket", "door", "football", "cone"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
-		"id": 15, "name": "第16关 · 深夜涌动", "start_sun": 50, "difficulty": 5,
+		"id": 15, "name": "第16关 · 深夜涌动", "scene": "night", "start_sun": 50, "difficulty": 5,
 		"waves": [
 			{"t": 13.0, "z": ["door", "football", "cone"]},
 			{"t": 38.0, "z": ["bucket", "door", "football", "basic"]},
@@ -370,7 +366,6 @@ const LEVELS := [
 			{"t": 164.0, "z": ["cone", "football", "door", "bucket", "door"], "huge": true},
 			{"t": 200.0, "z": ["football", "bucket", "door", "football", "cone", "bucket"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 16, "name": "第17关 · 三重火力", "start_sun": 100, "difficulty": 5,
@@ -384,7 +379,6 @@ const LEVELS := [
 			{"t": 200.0, "z": ["door", "football", "bucket", "door", "football", "cone", "bucket"], "huge": true},
 			{"t": 240.0, "z": ["bucket", "door", "football", "bucket", "cone", "door", "basic", "football"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 17, "name": "第18关 · 全能火力", "start_sun": 50, "difficulty": 5,
@@ -397,7 +391,6 @@ const LEVELS := [
 			{"t": 164.0, "z": ["cone", "football", "door", "bucket", "football"], "huge": true},
 			{"t": 200.0, "z": ["door", "bucket", "football", "cone", "door", "bucket"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 18, "name": "第19关 · 钢铁洪流", "start_sun": 50, "difficulty": 6,
@@ -410,7 +403,6 @@ const LEVELS := [
 			{"t": 160.0, "z": ["bucket", "door", "football", "cone", "bucket"], "huge": true},
 			{"t": 196.0, "z": ["football", "bucket", "door", "football", "door", "cone"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 19, "name": "第20关 · 二十年试炼", "start_sun": 100, "difficulty": 6,
@@ -423,10 +415,9 @@ const LEVELS := [
 			{"t": 162.0, "z": ["door", "football", "bucket", "cone", "door", "bucket"], "huge": true},
 			{"t": 198.0, "z": ["bucket", "door", "football", "bucket", "door", "football", "cone", "basic"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
-		"id": 20, "name": "第21关 · 橄榄球夜袭", "start_sun": 50, "difficulty": 6,
+		"id": 20, "name": "第21关 · 橄榄球夜袭", "scene": "night", "start_sun": 50, "difficulty": 6,
 		"waves": [
 			{"t": 12.0, "z": ["football", "basic", "cone"]},
 			{"t": 34.0, "z": ["door", "football", "bucket", "basic"]},
@@ -436,7 +427,6 @@ const LEVELS := [
 			{"t": 154.0, "z": ["cone", "football", "door", "football", "bucket"], "huge": true},
 			{"t": 188.0, "z": ["football", "bucket", "door", "football", "cone", "door"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 21, "name": "第22关 · 铁桶浪潮", "start_sun": 75, "difficulty": 6,
@@ -449,7 +439,6 @@ const LEVELS := [
 			{"t": 154.0, "z": ["cone", "bucket", "football", "door", "bucket"], "huge": true},
 			{"t": 188.0, "z": ["bucket", "door", "bucket", "football", "cone", "door"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 22, "name": "第23关 · 混血大军", "start_sun": 50, "difficulty": 6,
@@ -462,10 +451,9 @@ const LEVELS := [
 			{"t": 152.0, "z": ["door", "football", "bucket", "cone", "door", "bucket"], "huge": true},
 			{"t": 186.0, "z": ["bucket", "door", "football", "bucket", "door", "football", "cone", "basic"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
-		"id": 23, "name": "第24关 · 围攻之局", "start_sun": 50, "difficulty": 7,
+		"id": 23, "name": "第24关 · 围攻之局", "scene": "night", "start_sun": 50, "difficulty": 7,
 		"waves": [
 			{"t": 11.0, "z": ["door", "football", "bucket", "cone"]},
 			{"t": 32.0, "z": ["bucket", "football", "door", "cone", "basic"]},
@@ -475,7 +463,6 @@ const LEVELS := [
 			{"t": 152.0, "z": ["cone", "football", "door", "bucket", "football", "door"], "huge": true},
 			{"t": 186.0, "z": ["door", "bucket", "football", "door", "bucket", "cone", "basic"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 24, "name": "第25关 · 疯狂冲刺", "start_sun": 100, "difficulty": 7,
@@ -488,10 +475,9 @@ const LEVELS := [
 			{"t": 144.0, "z": ["door", "football", "bucket", "cone", "door", "bucket"], "huge": true},
 			{"t": 176.0, "z": ["bucket", "door", "football", "bucket", "door", "football", "cone", "basic"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
-		"id": 25, "name": "第26关 · 尸潮终夜", "start_sun": 50, "difficulty": 7,
+		"id": 25, "name": "第26关 · 尸潮终夜", "scene": "night", "start_sun": 50, "difficulty": 7,
 		"waves": [
 			{"t": 10.0, "z": ["football", "door", "bucket", "basic"]},
 			{"t": 28.0, "z": ["bucket", "football", "door", "cone", "basic"]},
@@ -501,7 +487,6 @@ const LEVELS := [
 			{"t": 140.0, "z": ["door", "football", "bucket", "cone", "door", "bucket"], "huge": true},
 			{"t": 172.0, "z": ["bucket", "door", "football", "bucket", "door", "football", "cone", "basic", "bucket"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 26, "name": "第27关 · 绝望防御", "start_sun": 75, "difficulty": 7,
@@ -514,10 +499,9 @@ const LEVELS := [
 			{"t": 140.0, "z": ["door", "football", "bucket", "cone", "door", "bucket", "football"], "huge": true},
 			{"t": 172.0, "z": ["bucket", "door", "football", "bucket", "door", "football", "cone", "basic", "bucket", "door"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
-		"id": 27, "name": "第28关 · 终极火线", "start_sun": 50, "difficulty": 8,
+		"id": 27, "name": "第28关 · 终极火线", "scene": "night", "start_sun": 50, "difficulty": 8,
 		"waves": [
 			{"t": 10.0, "z": ["door", "bucket", "football", "cone", "basic"]},
 			{"t": 28.0, "z": ["bucket", "football", "door", "cone", "door", "bucket"]},
@@ -527,7 +511,6 @@ const LEVELS := [
 			{"t": 138.0, "z": ["football", "door", "bucket", "cone", "door", "bucket", "football"], "huge": true},
 			{"t": 170.0, "z": ["bucket", "door", "football", "bucket", "door", "football", "cone", "basic", "bucket"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
 		"id": 28, "name": "第29关 · 死亡进军", "start_sun": 100, "difficulty": 8,
@@ -541,10 +524,9 @@ const LEVELS := [
 			{"t": 160.0, "z": ["bucket", "door", "football", "bucket", "door", "football", "cone", "basic", "bucket", "door"], "huge": true},
 			{"t": 190.0, "z": ["football", "door", "bucket", "door", "football", "bucket", "cone", "basic", "bucket", "door"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 	{
-		"id": 29, "name": "第30关 · 终局之战", "start_sun": 100, "difficulty": 8,
+		"id": 29, "name": "第30关 · 终局之战", "scene": "night", "start_sun": 100, "difficulty": 8,
 		"waves": [
 			{"t": 9.0, "z": ["door", "bucket", "football", "cone", "basic", "door"]},
 			{"t": 26.0, "z": ["bucket", "football", "door", "cone", "door", "bucket", "football"]},
@@ -556,9 +538,39 @@ const LEVELS := [
 			{"t": 188.0, "z": ["football", "bucket", "door", "football", "door", "bucket", "cone", "basic", "bucket", "door", "football"], "huge": true},
 			{"t": 220.0, "z": ["bucket", "door", "football", "bucket", "door", "football", "cone", "basic", "bucket", "door", "football", "cone"], "huge": true},
 		],
-		"plants": PLANT_ORDER,
 	},
 ]
+
+# ---------------- 场景（白天 / 夜晚） ----------------
+const SCENE_DAY := "day"
+const SCENE_NIGHT := "night"
+## 夜间草坪色调：只对背景贴图做 modulate，不压暗实体与界面
+const NIGHT_LAWN_TINT := Color(0.42, 0.5, 0.74)
+
+
+## 关卡数据（index 0 基，越界返回空字典）
+func level_data(index: int) -> Dictionary:
+	if index < 0 or index >= LEVELS.size():
+		return {}
+	return LEVELS[index]
+
+
+func level_scene(index: int) -> String:
+	return String(level_data(index).get("scene", SCENE_DAY))
+
+
+func level_is_night(index: int) -> bool:
+	return level_scene(index) == SCENE_NIGHT
+
+
+## 关卡可用植物（level_id 为 1 基）：PLANT_UNLOCK 中 unlockLevel <= level_id 的植物全部开放
+func plants_for_level(level_id: int) -> Array[String]:
+	var result: Array[String] = []
+	for plant_id in PLANT_ORDER:
+		if int(PLANT_UNLOCK.get(plant_id, 0)) <= level_id:
+			result.append(plant_id)
+	return result
+
 
 # ---------------- 小推车 ----------------
 const MOWER_X := 520.0

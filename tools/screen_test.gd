@@ -109,6 +109,9 @@ func _test_router() -> void:
 			router.game != null and router.game is MainGameManager)
 	_check("主控已挂载到路由", router.game != null and router.game.get_parent() == router)
 	_check("主控关卡数据为第 0 关", router.game != null and router.game.level_index == 0)
+	_check("第 1 关卡片按解锁表生成",
+			router.game != null \
+			and router.game.level_plants.size() == GameConfig.plants_for_level(1).size())
 
 	var game_ref: MainGameManager = router.game
 	game_ref.end_game(true)
@@ -124,6 +127,17 @@ func _test_router() -> void:
 			and router.current_screen is LevelSelectScreen)
 	_check("离开游戏态后主控被释放",
 			router.game == null and not is_instance_valid(game_ref))
+
+	router.start_level(15)
+	await get_tree().process_frame
+	_check("夜间关卡装载夜间场景",
+			router.game != null and router.game.is_night())
+	_check("夜间关卡卡片与解锁表一致",
+			router.game != null \
+			and router.game.level_plants.size() == GameConfig.plants_for_level(16).size())
+	router.return_to_level_select()
+	await get_tree().process_frame
+	await get_tree().process_frame
 
 	router.queue_free()
 	await get_tree().process_frame
@@ -154,17 +168,35 @@ func _test_save() -> void:
 func _test_levels() -> void:
 	print("[TEST] --- 关卡数据 ---")
 	_check("关卡数量为 30", GameConfig.LEVELS.size() == 30)
+	var night_count := 0
 	for i in GameConfig.LEVELS.size():
 		var level: Dictionary = GameConfig.LEVELS[i]
-		var plants_ok := true
-		for raw_id in (level["plants"] as Array):
-			if not GameConfig.PLANTS.has(String(raw_id)):
+		var unlocked: Array[String] = GameConfig.plants_for_level(i + 1)
+		var plants_ok := not unlocked.is_empty()
+		for raw_id in unlocked:
+			if not GameConfig.PLANTS.has(raw_id):
 				plants_ok = false
-		_check("第 %d 关植物 id 合法" % (i + 1), plants_ok)
+		_check("第 %d 关可用植物合法" % (i + 1), plants_ok)
 		_check("第 %d 关波次非空" % (i + 1), (level["waves"] as Array).size() > 0)
 		_check("第 %d 关初始阳光 > 0" % (i + 1), int(level["start_sun"]) > 0)
+		if GameConfig.level_is_night(i):
+			night_count += 1
 	_check("第 1 关波次引用全局 WAVES",
 			(GameConfig.LEVELS[0]["waves"] as Array).size() == GameConfig.WAVES.size())
+	_check("夜间关卡共 6 关", night_count == 6)
+	_check("第 16 关为夜间场景", GameConfig.level_is_night(15))
+	_check("第 30 关为夜间场景", GameConfig.level_is_night(29))
+	_check("第 1 关为白天场景", not GameConfig.level_is_night(0))
+
+	var opening: Array[String] = GameConfig.plants_for_level(1)
+	_check("第 1 关仅向日葵与豌豆射手",
+			opening.size() == 2 and opening.has("sunflower") and opening.has("peashooter"))
+	_check("第 7 关解锁双发射手", GameConfig.plants_for_level(7).has("repeater"))
+	_check("第 6 关仍未解锁双发射手", not GameConfig.plants_for_level(6).has("repeater"))
+	_check("第 11 关解锁寒冰射手", GameConfig.plants_for_level(11).has("snowpea"))
+	_check("第 10 关仍未解锁寒冰射手", not GameConfig.plants_for_level(10).has("snowpea"))
+	_check("第 30 关解锁全部 11 种植物",
+			GameConfig.plants_for_level(30).size() == GameConfig.PLANT_ORDER.size())
 
 
 # ---------------- 图鉴 ----------------
