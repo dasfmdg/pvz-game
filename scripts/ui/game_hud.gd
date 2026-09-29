@@ -5,8 +5,16 @@ extends CanvasLayer
 
 const SUN_BOX_POS := Vector2(24.0, 18.0)
 const SUN_BOX_SIZE := Vector2(186.0, 74.0)
-const WAVE_BOX_POS := Vector2(1390.0, 18.0)
-const WAVE_BOX_SIZE := Vector2(390.0, 34.0)
+const WAVE_PANEL_POS := Vector2(1386.0, 14.0)
+const WAVE_PANEL_SIZE := Vector2(398.0, 76.0)
+const WAVE_BAR_INSET := Vector2(12.0, 6.0)
+const WAVE_LABEL_SIZE := Vector2(374.0, 26.0)
+const WAVE_BAR_SIZE := Vector2(374.0, 30.0)
+const WAVE_BAR_OFFSET_Y := 36.0
+const WAVE_BAR_BG_COLOR := Color(0.07, 0.06, 0.04, 0.92)
+const WAVE_BAR_BORDER_COLOR := Color(0.38, 0.3, 0.18)
+const WAVE_BAR_FILL_COLOR := Color(0.42, 0.76, 0.3)
+const WAVE_BAR_HUGE_FILL_COLOR := Color(0.86, 0.28, 0.22)
 const HINT_TEXT := "1-9 select card    P pause    M mute    Esc cancel    Click plant / shovel to dig"
 
 var game: MainGameManager = null
@@ -15,6 +23,7 @@ var card_slot: CardSlot = null
 var _sun_label: Label = null
 var _wave_label: Label = null
 var _progress: ProgressBar = null
+var _bar_fill_style: StyleBoxFlat = null
 var _banner: Label = null
 var _pause_label: Label = null
 var _overlay: Control = null
@@ -86,26 +95,49 @@ func _build_card_slot(root: Control) -> void:
 
 
 func _build_wave_panel(root: Control) -> void:
+	var panel := ColorRect.new()
+	panel.color = Color(0.12, 0.1, 0.07, 0.75)
+	panel.position = WAVE_PANEL_POS
+	panel.size = WAVE_PANEL_SIZE
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(panel)
+
 	_wave_label = Label.new()
-	_wave_label.position = WAVE_BOX_POS
-	_wave_label.size = WAVE_BOX_SIZE
+	_wave_label.position = WAVE_PANEL_POS + WAVE_BAR_INSET
+	_wave_label.size = WAVE_LABEL_SIZE
 	_wave_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_wave_label.add_theme_font_size_override("font_size", 28)
+	_wave_label.add_theme_font_size_override("font_size", 26)
 	_wave_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.8))
 	_wave_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	_wave_label.add_theme_constant_override("outline_size", 6)
 	_wave_label.text = "Wave 0 / %d" % _total_waves()
 	root.add_child(_wave_label)
 
+	# 波数进度条：每波到达推进一步，满格即最后一波；大波时填充色转红
 	_progress = ProgressBar.new()
-	_progress.position = WAVE_BOX_POS + Vector2(0.0, 40.0)
-	_progress.size = Vector2(WAVE_BOX_SIZE.x, 22.0)
+	_progress.position = WAVE_PANEL_POS + Vector2(WAVE_BAR_INSET.x, WAVE_BAR_OFFSET_Y)
+	_progress.size = WAVE_BAR_SIZE
 	_progress.min_value = 0.0
 	_progress.max_value = float(_total_waves())
 	_progress.value = 0.0
 	_progress.show_percentage = false
 	_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_progress.add_theme_stylebox_override("background",
+			_make_bar_stylebox(WAVE_BAR_BG_COLOR, WAVE_BAR_BORDER_COLOR, 3, 6))
+	_bar_fill_style = _make_bar_stylebox(
+			WAVE_BAR_FILL_COLOR, WAVE_BAR_FILL_COLOR, 0, 4)
+	_progress.add_theme_stylebox_override("fill", _bar_fill_style)
 	root.add_child(_progress)
+
+
+func _make_bar_stylebox(fill_color: Color, border_color: Color,
+		border_width: int, corner_radius: int) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = fill_color
+	box.border_color = border_color
+	box.set_border_width_all(border_width)
+	box.set_corner_radius_all(corner_radius)
+	return box
 
 
 func _build_hint(root: Control) -> void:
@@ -228,10 +260,21 @@ func _on_wave_started(index: int, total_waves: int, is_huge: bool) -> void:
 		_wave_label.text = "Wave %d / %d" % [index, total_waves]
 	if _progress != null:
 		_progress.value = float(index)
+	_update_bar_fill_color(is_huge)
 	if is_huge:
 		show_banner("A HUGE WAVE OF ZOMBIES IS APPROACHING!")
 	elif index <= 1:
 		show_banner("READY... SET... PLANT!")
+
+
+## 大波时把进度条填充色切为红色，便于一眼识别
+func _update_bar_fill_color(is_huge: bool) -> void:
+	if _bar_fill_style == null:
+		return
+	_bar_fill_style.bg_color = WAVE_BAR_HUGE_FILL_COLOR if is_huge \
+			else WAVE_BAR_FILL_COLOR
+	if _progress != null:
+		_progress.queue_redraw()
 
 
 func _on_game_paused(is_paused: bool) -> void:
