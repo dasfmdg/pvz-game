@@ -31,3 +31,32 @@ func is_lane_protected(lane: int) -> bool:
 		if mower.lane == lane and not mower.used:
 			return true
 	return false
+
+
+# ---------------- 单局快照 ----------------
+## 单局快照：每行一条（已用 / 冲出中 / 当前横坐标）
+func to_snapshot() -> Dictionary:
+	var data: Array = []
+	for mower in mowers:
+		if mower != null and is_instance_valid(mower):
+			data.append(mower.to_snapshot())
+	return {"mowers": data}
+
+
+## 读档恢复：按行套用存档（缺行的行回退到初始状态，保证每行仍有推车数据）
+func apply_snapshot(data: Dictionary) -> void:
+	var by_row := {}
+	var raw: Variant = data.get("mowers", [])
+	if raw is Array:
+		for entry in raw as Array:
+			if entry is Dictionary:
+				by_row[int((entry as Dictionary).get("row", -1))] = entry
+	for mower in mowers:
+		if mower == null or not is_instance_valid(mower):
+			continue
+		if by_row.has(mower.lane):
+			mower.apply_snapshot(by_row[mower.lane] as Dictionary)
+		else:
+			mower.apply_snapshot({
+				"row": mower.lane, "used": false, "running": false, "x": GameConfig.MOWER_X,
+			})

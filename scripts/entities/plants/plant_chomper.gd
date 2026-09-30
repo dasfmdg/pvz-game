@@ -19,6 +19,33 @@ func _on_planted() -> void:
 		sprite.play("idle")
 
 
+## 单局快照：吞噬状态机与计时器
+func snapshot_state() -> Dictionary:
+	return {"state": int(_state), "t": _timer}
+
+
+func restore_state(data: Dictionary) -> void:
+	_state = _state_from_int(int(data.get("state", 0)))
+	_timer = float(data.get("t", 0.0))
+	if sprite == null:
+		return
+	if _state == E_State.Chewing:
+		sprite.play("attack")
+	elif _state == E_State.Digestion:
+		sprite.play("idle")
+
+
+## 整数还原枚举（避免非法值写坏状态机）
+func _state_from_int(value: int) -> E_State:
+	match value:
+		1:
+			return E_State.Chewing
+		2:
+			return E_State.Digestion
+		_:
+			return E_State.Idle
+
+
 func _tick(delta: float) -> void:
 	if _state == E_State.Idle:
 		_try_eat()

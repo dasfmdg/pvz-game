@@ -5,6 +5,16 @@ extends Node2D
 
 ## 关卡结算需要重开时发出（由界面路由接管重载关卡）
 signal restart_requested()
+## 请求读取单局快照（由 HUD 发出，由界面路由接管「重建关卡 + 覆盖状态」）
+signal load_run_requested(slot: int)
+
+## 单局快照结构版本（与 SaveManager.RUN_SAVE_VERSION 对应）
+const SNAPSHOT_VERSION := 1
+## 读档必备字段：任一缺失即判定为不可用快照
+const SNAPSHOT_REQUIRED_FIELDS: Array[String] = [
+	"level_index", "level_plants", "time", "sun", "killed",
+	"wave", "plants", "zombies", "mowers",
+]
 
 var plants_root: Node2D = null
 var mowers_root: Node2D = null
@@ -271,3 +281,127 @@ func end_game(is_win: bool) -> void:
 	if is_win:
 		SoundManager.play("brainz")
 	EventBus.game_over.emit(is_win, killed)
+
+
+# ---------------- 单局快照 ----------------
+## 抓取当前单局状态快照（豌豆 / 阳光 / 爆炸特效等瞬态对象一律不入档）
+func capture_snapshot() -> Dictionary:
+	var sun_snap := sun_manager.to_snapshot()
+	var wave_snap := wave_manager.to_snapshot()
+	var grid_snap := grid_manager.to_snapshot()
+	var mower_snap := mower_manager.to_snapshot()
+	return {
+		"version": SNAPSHOT_VERSION,
+		"level_index": level_index,
+		"level_plants": level_plants.duplicate(),
+		"time": wave_manager.level_time(),
+		"sun": sun,
+		"killed": killed,
+		"sky_sun_timer": float(sun_snap.get("sky_sun_timer", GameConfig.SKY_SUN_FIRST)),
+		"wave": wave_snap,
+		"card_cooldowns": _card_cooldowns_snapshot(),
+		"plants": grid_snap.get("plants", []),
+		"zombies": _zombies_snapshot(),
+		"mowers": mower_snap.get("mowers", []),
+	}
+
+
+## 请求读取快照槽位（由 HUD 触发；真正重建关卡由界面路由接管）
+func request_load(slot: int) -> void:
+	load_run_requested.emit(slot)
+
+
+## 覆盖式读档：清空重建后的植物 / 僵尸 / 小推车，再按快照还原状态
+## 版本不匹配或关键字段缺失时返回 false 并告警，绝不改动当前局
+func apply_snapshot(data: Dictionary) -> bool:
+	if int(data.get("version", 0)) != SNAPSHOT_VERSION:
+		push_warning("[MainGameManager] 单局快照版本不兼容，忽略读档")
+		return false
+	if not _snapshot_fields_ok(data):
+		push_warning("[MainGameManager] 单局快照关键字段缺失，忽略读档")
+		return false
+
+	# 先清空刚建出来的实体（瞬态弹道 / 特效一并清掉）
+	grid_manager.clear_plants()
+	wave_manager.clear_zombies()
+	sun_manager.clear_suns()
+	_clear_layer(bullets_root)
+	_clear_layer(fx_root)
+
+	is_over = false
+	is_paused = false
+	killed = maxi(0, int(data.get("killed", 0)))
+	sun = maxi(0, int(data.get("sun", level_start_sun)))
+	EventBus.sun_changed.emit(sun)
+
+	# 先设定关卡时间，波次 pending 的相对剩余秒数依赖它还原为绝对时刻
+	wave_manager.set_level_time(float(data.get("time", 0.0)))
+	wave_manager.apply_snapshot(data.get("wave", {}) as Dictionary)
+	sun_manager.apply_snapshot({
+		"sky_sun_timer": data.get("sky_sun_timer", GameConfig.SKY_SUN_FIRST),
+	})
+	grid_manager.apply_snapshot({"plants": data.get("plants", [])})
+	_apply_zombies(data.get("zombies", []))
+	mower_manager.apply_snapshot({"mowers": data.get("mowers", [])})
+	_apply_card_cooldowns(data.get("card_cooldowns", {}))
+	return true
+
+
+## 必备字段与类型校验
+func _snapshot_fields_ok(data: Dictionary) -> bool:
+	for key in SNAPSHOT_REQUIRED_FIELDS:
+		if not data.has(key):
+			return false
+	return data["level_plants"] is Array and data["wave"] is Dictionary \
+		and data["plants"] is Array and data["zombies"] is Array \
+		and data["mowers"] is Array
+
+
+## 各卡剩余冷却 {植物 id: 秒}
+func _card_cooldowns_snapshot() -> Dictionary:
+	if hud == null or hud.card_slot == null:
+		return {}
+	return hud.card_slot.to_snapshot()
+
+
+func _apply_card_cooldowns(data: Variant) -> void:
+	if hud == null or hud.card_slot == null:
+		return
+	var cooldowns: Dictionary = data as Dictionary if data is Dictionary else {}
+	hud.card_slot.apply_snapshot(cooldowns)
+
+
+## 场上僵尸快照：仅 Walk / Eat 入档（Dying / Burnt 属瞬态，跳过）
+func _zombies_snapshot() -> Array:
+	var data: Array = []
+	for zombie in wave_manager.all_zombies():
+		if zombie == null or not zombie.can_be_hit():
+			continue
+		data.append(zombie.to_snapshot())
+	return data
+
+
+## 按快照重建僵尸（类型非法 / 行越界一律丢弃）
+func _apply_zombies(entries: Variant) -> void:
+	if not (entries is Array):
+		return
+	for raw in entries as Array:
+		if not (raw is Dictionary):
+			continue
+		var entry := raw as Dictionary
+		var zombie_id := String(entry.get("type", ""))
+		if not GameConfig.ZOMBIES.has(zombie_id):
+			continue
+		var lane := clampi(int(entry.get("row", 0)), 0, GameConfig.ROWS - 1)
+		var zombie := ZombieBase.new()
+		zombie.setup(zombie_id, lane, GameConfig.ZOMBIE_SPAWN_X, self)
+		wave_manager.zombies.append(zombie)
+		zombies_root.add_child(zombie)
+		zombie.apply_snapshot(entry)
+
+
+func _clear_layer(layer: Node2D) -> void:
+	if layer == null:
+		return
+	for child in layer.get_children():
+		child.queue_free()

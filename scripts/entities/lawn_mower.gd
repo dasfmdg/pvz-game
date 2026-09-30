@@ -48,3 +48,18 @@ func _process(delta: float) -> void:
 			zombie.kill_directly()
 	if position.x > GameConfig.CANVAS_W + 150.0:
 		queue_free()
+
+
+# ---------------- 单局快照 ----------------
+## 单局快照：所在行 / 是否已用 / 是否冲出中 / 当前横坐标（冲出中的按当前位置继续跑）
+func to_snapshot() -> Dictionary:
+	return {"row": lane, "used": used, "running": running, "x": position.x}
+
+
+## 读档恢复：还原位置与状态，冲出中的继续播放启动动画
+func apply_snapshot(data: Dictionary) -> void:
+	position.x = float(data.get("x", position.x))
+	used = bool(data.get("used", used))
+	running = bool(data.get("running", running))
+	if sprite != null:
+		sprite.play("on" if running else "idle")

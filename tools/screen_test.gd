@@ -21,6 +21,7 @@ func _run() -> void:
 	_test_levels()
 	await _test_almanac()
 	await _test_settings()
+	await _test_run_snapshot()
 	_report()
 
 
@@ -597,6 +598,130 @@ func _test_settings() -> void:
 
 	screen.queue_free()
 	await get_tree().process_frame
+
+
+# ---------------- 单局快照存读档 ----------------
+func _test_run_snapshot() -> void:
+	print("[TEST] --- 单局快照 ---")
+	for slot in [1, 2, 3]:
+		SaveManager.remove_run(slot)
+
+	# 1) capture_snapshot 结构
+	var game := MainGameManager.new()
+	game.setup_level(6, ["sunflower", "peashooter"])
+	add_child(game)
+	await get_tree().process_frame
+	var snap := game.capture_snapshot()
+	_check("快照带结构版本号 1", int(snap.get("version", 0)) == 1)
+	_check("快照记录关卡号", int(snap.get("level_index", -1)) == 6)
+	var snap_plants: Array = snap.get("level_plants", [])
+	_check("快照记录携带卡片",
+			snap_plants.size() == 2 and snap_plants.has("sunflower") \
+			and snap_plants.has("peashooter"))
+	_check("快照含波次/植物/僵尸/小推车字段",
+			snap.has("wave") and snap.has("plants") \
+			and snap.has("zombies") and snap.has("mowers"))
+
+	# 2) 槽位读写 / 越界夹取
+	_check("初始三槽均无档",
+			not SaveManager.has_run(1) and not SaveManager.has_run(2) \
+			and not SaveManager.has_run(3))
+	_check("写入槽位 1", SaveManager.save_run(1, snap) and SaveManager.has_run(1))
+	_check("写入槽位 2", SaveManager.save_run(2, snap) and SaveManager.has_run(2))
+	_check("写入槽位 3", SaveManager.save_run(3, snap) and SaveManager.has_run(3))
+	SaveManager.remove_run(2)
+	_check("remove_run 后槽位 2 无档", not SaveManager.has_run(2))
+	_check("remove_run 不影响其他槽位",
+			SaveManager.has_run(1) and SaveManager.has_run(3))
+	SaveManager.remove_run(1)
+	SaveManager.remove_run(3)
+	SaveManager.save_run(0, snap)
+	_check("槽位 0 被夹到槽位 1",
+			SaveManager.has_run(1) and not SaveManager.has_run(2) \
+			and not SaveManager.has_run(3))
+	SaveManager.save_run(4, snap)
+	_check("槽位 4 被夹到槽位 3", SaveManager.has_run(3))
+	_check("无档槽位 load_run 返回空字典", SaveManager.load_run(2).is_empty())
+
+	# 3) 读档往返一致
+	game.add_sun(1000)
+	game.grid_manager.place_plant("sunflower", Vector2i(0, 0))
+	game.grid_manager.place_plant("peashooter", Vector2i(1, 2))
+	game.add_sun(1000)
+	game.wave_manager.wave_index = 1
+	game.killed = 12
+	game.sun = 175
+	var zombie := ZombieBase.new()
+	zombie.setup("cone", 3, 1500.0, game)
+	zombie.hp = 400
+	game.wave_manager.zombies.append(zombie)
+	game.zombies_root.add_child(zombie)
+	await get_tree().process_frame
+
+	# pending 于抓取前一刻写入，保证 dt 不受等待帧的 _elapsed 推进影响
+	game.wave_manager._pending = [
+		{"t": game.wave_manager._elapsed + 5.0, "type": "basic"},
+	]
+	var saved := game.capture_snapshot()
+	var saved_plants: Array = saved.get("plants", [])
+	var saved_zombies: Array = saved.get("zombies", [])
+	_check("快照植物数一致", saved_plants.size() == 2)
+	_check("快照僵尸数一致", saved_zombies.size() == 1)
+	var plant_entry: Dictionary = saved_plants[0]
+	_check("植物快照含类型/格子/生命/状态",
+			plant_entry.has("type") and plant_entry.has("col") \
+			and plant_entry.has("row") and plant_entry.has("hp") \
+			and plant_entry.has("state"))
+	var pending: Array = (saved.get("wave", {}) as Dictionary).get("pending", [])
+	_check("波次未出生队列存相对剩余秒数",
+			pending.size() == 1 \
+			and is_equal_approx(float((pending[0] as Dictionary).get("dt", -1.0)), 5.0))
+	_check("快照小推车每行一条",
+			(saved.get("mowers", []) as Array).size() == GameConfig.ROWS)
+	SaveManager.save_run(1, saved)
+
+	var fresh := MainGameManager.new()
+	fresh.setup_level(6, ["sunflower", "peashooter"])
+	add_child(fresh)
+	await get_tree().process_frame
+	var loaded := SaveManager.load_run(1)
+	_check("读档非空且字段齐全", not loaded.is_empty() and loaded.has("wave"))
+	_check("读档应用成功", fresh.apply_snapshot(loaded))
+	_check("读档关卡号一致", fresh.level_index == 6)
+	_check("读档阳光一致", fresh.sun == 175)
+	_check("读档击杀数一致", fresh.killed == 12)
+	_check("读档植物数一致", fresh.grid_manager.occupied_count() == 2)
+	_check("读档僵尸数一致", fresh.wave_manager.alive_count() == 1)
+	_check("读档波次索引一致", fresh.wave_manager.wave_index == 1)
+
+	# 4) 不兼容 / 缺字段数据不得改动当前局
+	var keep_sun := fresh.sun
+	var keep_plants := fresh.grid_manager.occupied_count()
+	_check("版本不兼容返回 false", not fresh.apply_snapshot({"version": 99}))
+	_check("版本不兼容不改变当前局",
+			fresh.sun == keep_sun and fresh.grid_manager.occupied_count() == keep_plants)
+	_check("关键字段缺失返回 false",
+			not fresh.apply_snapshot({"version": 1, "level_index": 6}))
+
+	# 5) 路由带快照进关（复用进关链路）
+	var scene := load("res://scenes/main.tscn") as PackedScene
+	var router := scene.instantiate() as MainRouter
+	add_child(router)
+	await get_tree().process_frame
+	_check("路由带快照进关成功",
+			router.start_level_from_snapshot(loaded) and router.game != null)
+	_check("路由读档后关卡号一致",
+			router.game != null and router.game.level_index == 6)
+	_check("路由读档后停在暂停态", router.game != null and router.game.is_paused)
+	_check("路由读档后僵尸数一致",
+			router.game != null and router.game.wave_manager.alive_count() == 1)
+
+	router.queue_free()
+	game.queue_free()
+	fresh.queue_free()
+	await get_tree().process_frame
+	for slot in [1, 2, 3]:
+		SaveManager.remove_run(slot)
 
 
 # ---------------- 汇总 ----------------

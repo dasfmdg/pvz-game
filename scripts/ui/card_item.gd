@@ -182,6 +182,21 @@ func is_timer_visible() -> bool:
 	return _timer_label != null and _timer_label.visible
 
 
+# ---------------- 单局快照 ----------------
+## 单局快照：剩余冷却与冷却总时长
+func to_snapshot() -> Dictionary:
+	return {"cooldown": _cooldown, "total": _cooldown_total}
+
+
+## 读档恢复：直接设定剩余冷却（读档后不播放冷却完毕闪烁）
+func apply_snapshot(data: Dictionary) -> void:
+	_cooldown = maxf(0.0, float(data.get("cooldown", 0.0)))
+	_cooldown_total = maxf(0.0, float(data.get("total", 0.0)))
+	_ready_flash = 0.0
+	_sync_timer_label()
+	queue_redraw()
+
+
 ## 倒计时文案只按整秒刷新，避免每帧改文本
 func _sync_timer_label() -> void:
 	if _timer_label == null:

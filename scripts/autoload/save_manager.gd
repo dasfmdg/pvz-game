@@ -9,6 +9,12 @@ const SAVE_PATH := "user://pvz_save.json"
 ## 存档结构版本：1 = 旧扁平字段，2 = settings / progress 分区 + 分关进度表
 const SAVE_VERSION := 2
 
+## 单局快照槽位：独立落盘 user://pvz_run_save_<slot>.json，与设置/进度存档互不影响
+const RUN_SLOT_MIN := 1
+const RUN_SLOT_MAX := 3
+## 单局快照结构版本（与 MainGameManager.SNAPSHOT_VERSION 对应）
+const RUN_SAVE_VERSION := 1
+
 const DEFAULT_BGM_VOLUME := 0.8
 const DEFAULT_SFX_VOLUME := 1.0
 const DEFAULT_MUTED := false
@@ -211,3 +217,66 @@ func total_best_kills() -> int:
 	for key in best_kills.keys():
 		total += int(best_kills[key])
 	return total
+
+
+# ---------------- 单局快照槽位 ----------------
+## 槽位夹取到 1~3，越界输入自动归位，避免脏路径
+func _run_save_path(slot: int) -> String:
+	return "user://pvz_run_save_%d.json" % clampi(slot, RUN_SLOT_MIN, RUN_SLOT_MAX)
+
+
+## 写入单局快照；写盘失败仅告警并返回 false，绝不抛错打断游戏
+func save_run(slot: int, data: Dictionary) -> bool:
+	var path := _run_save_path(slot)
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_warning("[SaveManager] 单局快照写入失败：%s" % path)
+		return false
+	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+	return true
+
+
+## 读取单局快照；无档 / 打开失败 / 解析失败 / 版本不匹配一律返回空字典
+func load_run(slot: int) -> Dictionary:
+	var path := _run_save_path(slot)
+	if not FileAccess.file_exists(path):
+		return {}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_warning("[SaveManager] 单局快照打开失败：%s" % path)
+		return {}
+	var text := file.get_as_text()
+	file.close()
+	var parsed: Variant = JSON.parse_string(text)
+	if parsed is not Dictionary:
+		push_warning("[SaveManager] 单局快照解析失败：%s" % path)
+		return {}
+	var root := parsed as Dictionary
+	if int(root.get("version", 0)) != RUN_SAVE_VERSION:
+		push_warning("[SaveManager] 单局快照版本不匹配：%s" % path)
+		return {}
+	return root
+
+
+## 槽位是否存在可用快照（文件缺失 / 内容损坏视为无档）
+func has_run(slot: int) -> bool:
+	var path := _run_save_path(slot)
+	if not FileAccess.file_exists(path):
+		return false
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return false
+	var text := file.get_as_text()
+	file.close()
+	return JSON.parse_string(text) is Dictionary
+
+
+## 删除槽位快照；文件不存在时静默返回
+func remove_run(slot: int) -> void:
+	var path := _run_save_path(slot)
+	if not FileAccess.file_exists(path):
+		return
+	var err := DirAccess.remove_absolute(path)
+	if err != OK:
+		push_warning("[SaveManager] 单局快照删除失败（err=%d）：%s" % [err, path])

@@ -38,6 +38,17 @@ func _tick(_delta: float) -> void:
 	pass
 
 
+# ---------------- 单局快照钩子（子类按需重写，存自己的私有计时器 / 状态） ----------------
+## 私有状态序列化；基类无状态，返回空字典
+func snapshot_state() -> Dictionary:
+	return {}
+
+
+## 私有状态恢复；对 sprite 的操作需自行判空（add_child 后 sprite 才存在）
+func restore_state(_data: Dictionary) -> void:
+	pass
+
+
 # ---------------- 生命周期 ----------------
 func setup(plant_id_value: String, cell_value: Vector2i, game_ref: MainGameManager) -> void:
 	plant_id = plant_id_value

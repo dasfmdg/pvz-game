@@ -13,6 +13,16 @@ func _on_planted() -> void:
 	_timer = float(_behavior.get("first_fire", 0.6))
 
 
+## 单局快照：射击主计时器与双发补射计时器
+func snapshot_state() -> Dictionary:
+	return {"t": _timer, "second_t": _second_timer}
+
+
+func restore_state(data: Dictionary) -> void:
+	_timer = float(data.get("t", _timer))
+	_second_timer = float(data.get("second_t", -1.0))
+
+
 func _tick(delta: float) -> void:
 	if _second_timer >= 0.0:
 		_second_timer -= delta

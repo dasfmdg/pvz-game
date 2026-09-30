@@ -13,6 +13,26 @@ func setup(game_ref: MainGameManager) -> void:
 	_sky_timer = GameConfig.SKY_SUN_FIRST
 
 
+## 清空场上全部阳光（读档重建时使用；阳光属瞬态对象，不入档）
+func clear_suns() -> void:
+	for sun in suns:
+		if sun != null and is_instance_valid(sun):
+			sun.queue_free()
+	suns = []
+
+
+# ---------------- 单局快照 ----------------
+## 单局快照：仅天降阳光计时器（场上阳光不入档）
+func to_snapshot() -> Dictionary:
+	return {"sky_sun_timer": _sky_timer}
+
+
+## 读档恢复：还原天降计时器并清空残留阳光
+func apply_snapshot(data: Dictionary) -> void:
+	_sky_timer = float(data.get("sky_sun_timer", GameConfig.SKY_SUN_FIRST))
+	clear_suns()
+
+
 func _process(delta: float) -> void:
 	if game == null or not game.is_running():
 		return

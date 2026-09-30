@@ -24,6 +24,55 @@ func level_time() -> float:
 	return _elapsed
 
 
+## 单局快照读档：直接设定关卡已进行时长（须在 apply_snapshot 之前调用，pending 还原依赖它）
+func set_level_time(value: float) -> void:
+	_elapsed = maxf(0.0, value)
+
+
+## 清空场上全部僵尸（读档重建时使用；只移除节点，不触发击杀结算）
+func clear_zombies() -> void:
+	for zombie in zombies:
+		if zombie != null and is_instance_valid(zombie):
+			zombie.queue_free()
+	zombies = []
+
+
+# ---------------- 单局快照 ----------------
+## 单局快照：波次索引 / 加速触发时刻 / 选行游标 / 未出生队列（dt 为相对剩余秒数）
+func to_snapshot() -> Dictionary:
+	var pending: Array = []
+	for entry in _pending:
+		pending.append({
+			"dt": float(entry["t"]) - _elapsed,
+			"type": String(entry["type"]),
+		})
+	return {
+		"index": wave_index,
+		"early_trigger_at": _early_trigger_at,
+		"lane_cursor": _lane_cursor,
+		"pending": pending,
+	}
+
+
+## 读档恢复：相对剩余秒数还原为绝对出场时刻（依赖已设定好的 level_time）
+func apply_snapshot(data: Dictionary) -> void:
+	wave_index = maxi(0, int(data.get("index", 0)))
+	_early_trigger_at = float(data.get("early_trigger_at", -1.0))
+	_lane_cursor = clampi(int(data.get("lane_cursor", _lane_cursor)), 0, GameConfig.ROWS - 1)
+	_pending = []
+	all_spawned = false
+	var raw_pending: Variant = data.get("pending", [])
+	if raw_pending is Array:
+		for raw in raw_pending as Array:
+			if raw is not Dictionary:
+				continue
+			var entry := raw as Dictionary
+			_pending.append({
+				"t": _elapsed + float(entry.get("dt", 0.0)),
+				"type": String(entry.get("type", "basic")),
+			})
+
+
 func _process(delta: float) -> void:
 	if game == null or not game.is_running():
 		return

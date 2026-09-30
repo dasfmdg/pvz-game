@@ -18,6 +18,18 @@ func _on_planted() -> void:
 		sprite.play("buried")
 
 
+## 单局快照：武装标记与武装倒计时
+func snapshot_state() -> Dictionary:
+	return {"armed": _armed, "arm_t": _arm_timer}
+
+
+func restore_state(data: Dictionary) -> void:
+	_armed = bool(data.get("armed", _armed))
+	_arm_timer = float(data.get("arm_t", _arm_timer))
+	if sprite != null:
+		sprite.play("armed" if _armed else "buried")
+
+
 func _tick(delta: float) -> void:
 	if not _armed:
 		_arm_timer -= delta

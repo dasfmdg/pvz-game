@@ -17,6 +17,18 @@ const WAVE_BAR_FILL_COLOR := Color(0.42, 0.76, 0.3)
 const WAVE_BAR_HUGE_FILL_COLOR := Color(0.86, 0.28, 0.22)
 const HINT_TEXT := "1-9 select card    P pause    M mute    Esc cancel    Click plant / shovel to dig"
 
+## 暂停面板：半透明底 + 标题 + 存/读档按钮 + 状态行（HUD 文案统一英文）
+const PAUSE_PANEL_SIZE := Vector2(900.0, 470.0)
+const PAUSE_PANEL_BG := Color(0.06, 0.05, 0.04, 0.82)
+const PAUSE_TITLE_TOP := 18.0
+const PAUSE_HINT_TOP := 92.0
+const PAUSE_SAVE_ROW_TOP := 170.0
+const PAUSE_LOAD_ROW_TOP := 262.0
+const PAUSE_STATUS_TOP := 366.0
+const PAUSE_BUTTON_W := 180.0
+const PAUSE_BUTTON_H := 64.0
+const PAUSE_BUTTON_GAP := 24.0
+
 var game: MainGameManager = null
 var card_slot: CardSlot = null
 
@@ -25,7 +37,10 @@ var _wave_label: Label = null
 var _progress: ProgressBar = null
 var _bar_fill_style: StyleBoxFlat = null
 var _banner: Label = null
-var _pause_label: Label = null
+var _pause_panel: Control = null
+var _pause_status: Label = null
+var _save_buttons: Array[Button] = []
+var _load_buttons: Array[Button] = []
 var _overlay: Control = null
 var _overlay_title: Label = null
 var _overlay_hint: Label = null
@@ -49,7 +64,7 @@ func _ready() -> void:
 	_build_wave_panel(root)
 	_build_hint(root)
 	_build_banner(root)
-	_build_pause_label(root)
+	_build_pause_panel(root)
 	_build_overlay(root)
 
 	EventBus.sun_changed.connect(_on_sun_changed)
@@ -168,19 +183,111 @@ func _build_banner(root: Control) -> void:
 	root.add_child(_banner)
 
 
-func _build_pause_label(root: Control) -> void:
-	_pause_label = Label.new()
-	_pause_label.position = Vector2(0.0, 460.0)
-	_pause_label.size = Vector2(GameConfig.CANVAS_W, 60.0)
-	_pause_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_pause_label.add_theme_font_size_override("font_size", 46)
-	_pause_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
-	_pause_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
-	_pause_label.add_theme_constant_override("outline_size", 8)
-	_pause_label.text = "PAUSED"
-	_pause_label.visible = false
-	_pause_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(_pause_label)
+func _build_pause_panel(root: Control) -> void:
+	_pause_panel = Control.new()
+	_pause_panel.size = PAUSE_PANEL_SIZE
+	_pause_panel.position = Vector2(
+			(GameConfig.CANVAS_W - PAUSE_PANEL_SIZE.x) * 0.5,
+			(GameConfig.CANVAS_H - PAUSE_PANEL_SIZE.y) * 0.5)
+	# STOP：面板打开时吞掉点击，避免误触到草坪上的种植 / 收阳光
+	_pause_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_pause_panel.visible = false
+	root.add_child(_pause_panel)
+
+	var shade := ColorRect.new()
+	shade.color = PAUSE_PANEL_BG
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pause_panel.add_child(shade)
+
+	var title := Label.new()
+	title.text = "PAUSED"
+	title.position = Vector2(0.0, PAUSE_TITLE_TOP)
+	title.size = Vector2(PAUSE_PANEL_SIZE.x, 64.0)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 52)
+	title.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	title.add_theme_constant_override("outline_size", 8)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pause_panel.add_child(title)
+
+	var hint := Label.new()
+	hint.text = "P resume    M mute    Esc cancel"
+	hint.position = Vector2(0.0, PAUSE_HINT_TOP)
+	hint.size = Vector2(PAUSE_PANEL_SIZE.x, 32.0)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 24)
+	hint.add_theme_color_override("font_color", Color(1.0, 1.0, 0.9, 0.8))
+	hint.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	hint.add_theme_constant_override("outline_size", 5)
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pause_panel.add_child(hint)
+
+	_save_buttons = _build_slot_row(PAUSE_SAVE_ROW_TOP, "Save", _on_save_pressed)
+	_load_buttons = _build_slot_row(PAUSE_LOAD_ROW_TOP, "Load", _on_load_pressed)
+
+	_pause_status = Label.new()
+	_pause_status.position = Vector2(0.0, PAUSE_STATUS_TOP)
+	_pause_status.size = Vector2(PAUSE_PANEL_SIZE.x, 36.0)
+	_pause_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pause_status.add_theme_font_size_override("font_size", 26)
+	_pause_status.add_theme_color_override("font_color", Color(1.0, 0.95, 0.6))
+	_pause_status.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	_pause_status.add_theme_constant_override("outline_size", 5)
+	_pause_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pause_panel.add_child(_pause_status)
+
+	_refresh_slot_buttons()
+
+
+## 一排槽位按钮（verb = Save / Load）
+func _build_slot_row(top: float, verb: String, on_pressed: Callable) -> Array[Button]:
+	var buttons: Array[Button] = []
+	var count := SaveManager.RUN_SLOT_MAX
+	var total := float(count) * PAUSE_BUTTON_W + float(count - 1) * PAUSE_BUTTON_GAP
+	var start_x := (PAUSE_PANEL_SIZE.x - total) * 0.5
+	for i in count:
+		var slot := i + 1
+		var button := UiKit.make_button("%s %d" % [verb, slot], 32)
+		button.custom_minimum_size = Vector2(PAUSE_BUTTON_W, PAUSE_BUTTON_H)
+		button.size = Vector2(PAUSE_BUTTON_W, PAUSE_BUTTON_H)
+		button.position = Vector2(start_x + float(i) * (PAUSE_BUTTON_W + PAUSE_BUTTON_GAP), top)
+		button.pressed.connect(on_pressed.bind(slot))
+		_pause_panel.add_child(button)
+		buttons.append(button)
+	return buttons
+
+
+## 无档槽位的读档按钮置灰
+func _refresh_slot_buttons() -> void:
+	for i in _load_buttons.size():
+		_load_buttons[i].disabled = not SaveManager.has_run(i + 1)
+
+
+func _set_pause_status(text: String) -> void:
+	if _pause_status != null:
+		_pause_status.text = text
+
+
+## 存档：抓取当前局快照写入槽位，并给出状态反馈
+func _on_save_pressed(slot: int) -> void:
+	if game == null:
+		return
+	var ok := SaveManager.save_run(slot, game.capture_snapshot())
+	_set_pause_status("Saved to slot %d" % slot if ok else "Save failed (slot %d)" % slot)
+	_refresh_slot_buttons()
+
+
+## 读档：交由主控信号 → 路由重建关卡；无档时只给状态反馈
+func _on_load_pressed(slot: int) -> void:
+	if not SaveManager.has_run(slot):
+		_set_pause_status("No save in slot %d" % slot)
+		return
+	if game == null:
+		return
+	_set_pause_status("Loading slot %d..." % slot)
+	game.request_load(slot)
 
 
 func _build_overlay(root: Control) -> void:
@@ -291,8 +398,12 @@ func _update_bar_fill_color(is_huge: bool) -> void:
 
 
 func _on_game_paused(is_paused: bool) -> void:
-	if _pause_label != null:
-		_pause_label.visible = is_paused
+	if _pause_panel == null:
+		return
+	if is_paused:
+		_refresh_slot_buttons()
+		_set_pause_status("")
+	_pause_panel.visible = is_paused
 
 
 func _on_game_over(is_win: bool, killed: int) -> void:
@@ -306,5 +417,5 @@ func _on_game_over(is_win: bool, killed: int) -> void:
 				Color(0.6, 1.0, 0.5) if is_win else Color(1.0, 0.4, 0.35))
 	if _overlay_hint != null:
 		_overlay_hint.text = "Zombies defeated: %d\n\nPress R to restart" % killed
-	if _pause_label != null:
-		_pause_label.visible = false
+	if _pause_panel != null:
+		_pause_panel.visible = false

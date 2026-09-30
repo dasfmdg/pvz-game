@@ -14,6 +14,15 @@ func _on_planted() -> void:
 	play_sfx("cherrybomb" if plant_id == "cherrybomb" else "jalapeno")
 
 
+## 单局快照：引信剩余时间
+func snapshot_state() -> Dictionary:
+	return {"fuse": _fuse}
+
+
+func restore_state(data: Dictionary) -> void:
+	_fuse = float(data.get("fuse", _fuse))
+
+
 func _tick(delta: float) -> void:
 	_fuse -= delta
 	if _fuse > 0.0:

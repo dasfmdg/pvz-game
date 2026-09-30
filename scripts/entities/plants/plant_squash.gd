@@ -19,6 +19,18 @@ func _on_planted() -> void:
 		sprite.play("idle")
 
 
+## 单局快照：跃起状态机（Jumping 由补间驱动，无法从存档续播，读档时退回 Idle 重新判定）
+func snapshot_state() -> Dictionary:
+	return {"state": int(_state)}
+
+
+func restore_state(data: Dictionary) -> void:
+	var raw := int(data.get("state", 0))
+	_state = E_State.Done if raw == 2 else E_State.Idle
+	if sprite != null and _state == E_State.Idle:
+		sprite.play("idle")
+
+
 func _tick(_delta: float) -> void:
 	if _state != E_State.Idle:
 		return

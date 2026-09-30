@@ -253,3 +253,37 @@ func _current_anim() -> String:
 	if not has_hat and _data.has("hat_removed_walk"):
 		return "bare_attack" if eating else "bare_walk"
 	return "attack" if eating else "walk"
+
+
+# ---------------- 单局快照 ----------------
+## 单局快照：仅 Walk / Eat 状态入档（Dying / Burnt 属瞬态，由调用方过滤）
+func to_snapshot() -> Dictionary:
+	return {
+		"type": zombie_id, "row": lane, "x": position.x, "hp": hp,
+		"has_hat": has_hat, "hat_hp": hat_hp,
+		"state": int(state), "slow_t": _slow_timer, "bite_t": _bite_timer,
+	}
+
+
+## 读档恢复：位置 / 生命 / 顶具 / 状态机（仅还原 Walk / Eat，目标植物由 AI 重新捕获）
+func apply_snapshot(data: Dictionary) -> void:
+	position.x = float(data.get("x", position.x))
+	hp = int(data.get("hp", hp))
+	has_hat = bool(data.get("has_hat", has_hat))
+	hat_hp = int(data.get("hat_hp", hat_hp))
+	_slow_timer = maxf(0.0, float(data.get("slow_t", 0.0)))
+	_bite_timer = maxf(0.0, float(data.get("bite_t", 0.0)))
+	state = _state_from_int(int(data.get("state", E_State.Walk)))
+	target_plant = null
+	if sprite != null:
+		_anim_name = ""
+		_sync_anim()
+
+
+## 整数还原枚举（Dying / Burnt 不入档，非法值一律回退 Walk）
+func _state_from_int(value: int) -> E_State:
+	match value:
+		1:
+			return E_State.Eat
+		_:
+			return E_State.Walk

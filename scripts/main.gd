@@ -130,8 +130,34 @@ func start_level(index: int, selected_plants: Array = []) -> void:
 	var manager := MainGameManager.new()
 	manager.setup_level(index, selected_plants)
 	manager.restart_requested.connect(_on_restart)
+	manager.load_run_requested.connect(_on_load_run_requested)
 	add_child(manager)
 	game = manager
+
+
+## 读档：按快照关卡重建关卡并覆盖状态；无档 / 不可用返回 false
+func load_run_snapshot(slot: int) -> bool:
+	var data := SaveManager.load_run(slot)
+	if data.is_empty():
+		return false
+	return start_level_from_snapshot(data)
+
+
+## 带快照进关：复用 start_level 重建关卡，再 apply_snapshot 覆盖状态，最后停在暂停态
+func start_level_from_snapshot(data: Dictionary) -> bool:
+	var raw_plants: Variant = data.get("level_plants", [])
+	var plants: Array = raw_plants if raw_plants is Array else []
+	start_level(int(data.get("level_index", 0)), plants)
+	if game == null:
+		return false
+	if not game.apply_snapshot(data):
+		return false
+	game.set_paused(true)
+	return true
+
+
+func _on_load_run_requested(slot: int) -> void:
+	load_run_snapshot(slot)
 
 
 ## 选卡确认：记录本关选卡结果并进关（重试沿用，不落存档）

@@ -127,3 +127,21 @@ func select_by_index(index: int) -> void:
 	if index < 0 or index >= cards.size():
 		return
 	_on_card_pressed(cards[index].plant_id)
+
+
+# ---------------- 单局快照 ----------------
+## 单局快照：{植物 id: 剩余冷却秒数}
+func to_snapshot() -> Dictionary:
+	var data := {}
+	for card in cards:
+		data[card.plant_id] = card.recharge_left()
+	return data
+
+
+## 读档恢复：按植物 id 套用剩余冷却，未记录的卡片视为就绪
+func apply_snapshot(data: Dictionary) -> void:
+	for card in cards:
+		card.apply_snapshot({
+			"cooldown": float(data.get(card.plant_id, 0.0)),
+			"total": card.recharge,
+		})

@@ -20,6 +20,12 @@ func _on_planted() -> void:
 	_refresh_anim()
 
 
+## 单局快照：外观由剩余生命推导，无需存私有字段；读档时按恢复后的 hp 重绘外观
+func restore_state(_data: Dictionary) -> void:
+	_anim_name = ""
+	_refresh_anim()
+
+
 func _tick(_delta: float) -> void:
 	_refresh_anim()
 

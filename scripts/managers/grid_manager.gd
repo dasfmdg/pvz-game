@@ -46,6 +46,69 @@ func occupied_count() -> int:
 	return _occupied.size()
 
 
+# ---------------- 单局快照 ----------------
+## 占用表内所有存活植物（过滤已死 / 失效引用）
+func plants() -> Array[PlantBase]:
+	var result: Array[PlantBase] = []
+	for cell in _occupied.keys():
+		var plant: PlantBase = _occupied.get(cell, null)
+		if plant != null and is_instance_valid(plant) and not plant.is_dead:
+			result.append(plant)
+	return result
+
+
+## 单局快照：每个植物存 类型 / 格子 / 生命 / 私有状态
+func to_snapshot() -> Dictionary:
+	var plants_data: Array = []
+	for plant in plants():
+		plants_data.append({
+			"type": plant.plant_id,
+			"col": plant.cell.x,
+			"row": plant.cell.y,
+			"hp": plant.hp,
+			"state": plant.snapshot_state(),
+		})
+	return {"plants": plants_data}
+
+
+## 清空占用表内全部植物（读档重建用；不触发铲除 / 阳光返还）
+func clear_plants() -> void:
+	for cell in _occupied.keys():
+		var plant: PlantBase = _occupied.get(cell, null)
+		if plant != null and is_instance_valid(plant):
+			plant.is_dead = true
+			plant.queue_free()
+	_occupied.clear()
+
+
+## 读档恢复：清空现有植物后按快照重建（不扣阳光、不触发卡片冷却）
+func apply_snapshot(data: Dictionary) -> void:
+	clear_plants()
+	var raw: Variant = data.get("plants", [])
+	if raw is not Array:
+		return
+	for entry in raw as Array:
+		if entry is Dictionary:
+			_spawn_from_snapshot(entry as Dictionary)
+
+
+## 按快照条目创建植物并登记占用
+func _spawn_from_snapshot(entry: Dictionary) -> void:
+	var plant_id := String(entry.get("type", ""))
+	var cell := Vector2i(int(entry.get("col", -1)), int(entry.get("row", -1)))
+	if not GameConfig.is_valid_cell(cell) or not is_free(cell):
+		return
+	var plant := PlantFactory.create(plant_id)
+	if plant == null:
+		return
+	plant.setup(plant_id, cell, game)
+	game.plants_root.add_child(plant)
+	plant.hp = clampi(int(entry.get("hp", plant.max_hp)), 1, plant.max_hp)
+	var state: Variant = entry.get("state", {})
+	plant.restore_state(state as Dictionary if state is Dictionary else {})
+	_occupied[cell] = plant
+
+
 ## 僵尸嘴部位置 bite_x 落在哪株植物的受击区间内
 func find_eatable_plant(lane: int, bite_x: float) -> PlantBase:
 	for col in GameConfig.COLS:

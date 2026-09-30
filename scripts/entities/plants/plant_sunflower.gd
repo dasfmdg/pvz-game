@@ -9,6 +9,15 @@ func _on_planted() -> void:
 	_timer = float(GameConfig.PLANT_BEHAVIOR["sunflower"]["first_sun"])
 
 
+## 单局快照：产阳光计时器
+func snapshot_state() -> Dictionary:
+	return {"t": _timer}
+
+
+func restore_state(data: Dictionary) -> void:
+	_timer = float(data.get("t", _timer))
+
+
 func _tick(delta: float) -> void:
 	_timer -= delta
 	if _timer > 0.0:
