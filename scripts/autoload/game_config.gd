@@ -28,50 +28,50 @@ const SUN_LIFETIME := 12.0
 # ---------------- 植物 ----------------
 ## cost 价格 / hp 生命 / recharge 卡片冷却(秒) / sheet 精灵表
 ## dw,dh 棋盘绘制尺寸 / name 显示名
-## recharge 已按“延长种植冷却”调整：对齐原作节奏，瞬发/防守类明显拉长，射手类小幅拉长
+## recharge 数值对齐参考实现 js/config.js（原先为放慢节奏做过加长，现改回原值）
 const PLANTS := {
 	"sunflower": {
-		"name": "Sunflower", "cost": 50, "hp": 300, "recharge": 7.5,
+		"name": "Sunflower", "cost": 50, "hp": 300, "recharge": 5.0,
 		"sheet": "sunflower", "dw": 118.0, "dh": 117.0,
 	},
 	"peashooter": {
-		"name": "Peashooter", "cost": 100, "hp": 300, "recharge": 7.5,
+		"name": "Peashooter", "cost": 100, "hp": 300, "recharge": 6.0,
 		"sheet": "peashooter", "dw": 112.0, "dh": 115.0,
 	},
 	"wallnut": {
-		"name": "Wall-nut", "cost": 50, "hp": 4000, "recharge": 30.0,
+		"name": "Wall-nut", "cost": 50, "hp": 4000, "recharge": 7.0,
 		"sheet": "walnut_full", "dw": 120.0, "dh": 136.0,
 	},
 	"cherrybomb": {
-		"name": "Cherry Bomb", "cost": 150, "hp": 300, "recharge": 50.0,
+		"name": "Cherry Bomb", "cost": 150, "hp": 300, "recharge": 15.0,
 		"sheet": "cherry", "dw": 120.0, "dh": 96.0,
 	},
 	"repeater": {
-		"name": "Repeater", "cost": 200, "hp": 300, "recharge": 12.0,
+		"name": "Repeater", "cost": 200, "hp": 300, "recharge": 10.0,
 		"sheet": "repeater", "dw": 112.0, "dh": 115.0,
 	},
 	"jalapeno": {
-		"name": "Jalapeno", "cost": 125, "hp": 300, "recharge": 50.0,
+		"name": "Jalapeno", "cost": 125, "hp": 300, "recharge": 12.0,
 		"sheet": "jalapeno", "dw": 140.0, "dh": 140.0,
 	},
 	"snowpea": {
-		"name": "Snow Pea", "cost": 175, "hp": 300, "recharge": 10.0,
+		"name": "Snow Pea", "cost": 175, "hp": 300, "recharge": 7.5,
 		"sheet": "snowpea", "dw": 112.0, "dh": 115.0,
 	},
 	"threepeater": {
-		"name": "Threepeater", "cost": 325, "hp": 300, "recharge": 12.0,
+		"name": "Threepeater", "cost": 325, "hp": 300, "recharge": 7.5,
 		"sheet": "threepeater", "dw": 112.0, "dh": 115.0,
 	},
 	"potato_mine": {
-		"name": "Potato Mine", "cost": 25, "hp": 300, "recharge": 30.0,
+		"name": "Potato Mine", "cost": 25, "hp": 300, "recharge": 20.0,
 		"sheet": "potato_buried", "dw": 90.0, "dh": 66.0,
 	},
 	"squash": {
-		"name": "Squash", "cost": 50, "hp": 300, "recharge": 30.0,
+		"name": "Squash", "cost": 50, "hp": 300, "recharge": 12.0,
 		"sheet": "squash_idle", "dw": 150.0, "dh": 339.0,
 	},
 	"chomper": {
-		"name": "Chomper", "cost": 150, "hp": 300, "recharge": 20.0,
+		"name": "Chomper", "cost": 150, "hp": 300, "recharge": 11.0,
 		"sheet": "chomper_idle", "dw": 96.0, "dh": 112.0,
 	},
 }
@@ -178,6 +178,11 @@ const WAVES := [
 
 ## 同一波内单个僵尸的间隔(秒)
 const WAVE_UNIT_GAP := 0.9
+
+## 波次被提前清空后的加速等待区间(秒)：本波僵尸被提前全灭时不再等时间表到点，
+## 而是随机等这个区间就进入下一波；若没被提前清空，则照常按 waves[*].t 到点投放
+const WAVE_EARLY_MIN := 3.0
+const WAVE_EARLY_MAX := 7.0
 
 # ---------------- 关卡 ----------------
 ## 30 关数据与 ../pvzcode/js/levels-data.js 逐关逐波对齐

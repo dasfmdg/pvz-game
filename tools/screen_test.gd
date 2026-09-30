@@ -273,6 +273,79 @@ func _test_seed_select(router: MainRouter) -> void:
 			if not router.game.level_plants.has(plant_id):
 				same_plants = false
 	_check("关卡卡片与所选植物一致", same_plants)
+
+	# 冷却表现：数值取自配置；冷却中不置灰、显示倒计时；冷却走完闪一次并恢复置灰判定
+	var test_card: CardItem = null
+	if router.game != null and router.game.hud != null \
+			and router.game.hud.card_slot != null \
+			and not router.game.hud.card_slot.cards.is_empty():
+		test_card = router.game.hud.card_slot.cards[0]
+	_check("卡片冷却数值与配置一致",
+			test_card != null and is_equal_approx(test_card.recharge,
+					GameConfig.plant_recharge(test_card.plant_id)))
+	if test_card != null:
+		_check("初始卡片已就绪且无倒计时",
+				test_card.is_ready() and not test_card.is_timer_visible()
+				and not test_card.is_flashing())
+		test_card.start_cooldown()
+		_check("使用后按配置进入冷却",
+				not test_card.is_ready() and not test_card.can_use()
+				and is_equal_approx(test_card.recharge_left(), test_card.recharge))
+		_check("冷却中显示剩余秒数", test_card.is_timer_visible())
+		test_card.set_affordable(false)
+		_check("冷却中阳光不足不置灰", not test_card.shows_unaffordable())
+		test_card.tick(test_card.recharge)
+		_check("冷却走完恢复可用",
+				test_card.is_ready() and not test_card.is_timer_visible())
+		_check("冷却完毕闪一次", test_card.is_flashing())
+		_check("冷却结束后阳光不足才置灰", test_card.shows_unaffordable())
+		test_card.tick(CardItem.READY_FLASH_TIME)
+		_check("闪烁播放完自动消失", not test_card.is_flashing())
+		test_card.set_affordable(true)
+		_check("阳光充足恢复原色", not test_card.shows_unaffordable() \
+				and test_card.can_use())
+
+	# 波次节奏：到点必出；本波被提前清空时按 3~7s 随机提前出下一波
+	if router.game != null and router.game.wave_manager != null:
+		var wm: WaveManager = router.game.wave_manager
+		var waves: Array = router.game.level_waves
+		_check("首波按难度时间表到点出场",
+				is_equal_approx(wm._wave_due_time(waves[0]), float(waves[0]["t"])))
+		if waves.size() > 1:
+			var second_scheduled := float(waves[1]["t"])
+			wm.wave_index = 1
+			wm._elapsed = 10.0
+			wm._early_trigger_at = -1.0
+			wm._update_early_trigger()
+			var early_gap := wm._early_trigger_at - wm._elapsed
+			_check("本波被提前清空后随机等 3~7s",
+					early_gap >= GameConfig.WAVE_EARLY_MIN \
+					and early_gap <= GameConfig.WAVE_EARLY_MAX)
+			_check("加速触发早于时间表",
+					is_equal_approx(wm._wave_due_time(waves[1]),
+							minf(second_scheduled, wm._early_trigger_at)))
+			wm._early_trigger_at = second_scheduled + 5.0
+			_check("时间表更早时不因加速推迟",
+					is_equal_approx(wm._wave_due_time(waves[1]), second_scheduled))
+			wm._elapsed = second_scheduled + 0.1
+			wm._launch_due_waves()
+			_check("投放后加速标记复位",
+					wm._early_trigger_at < 0.0 and wm.wave_index == 2)
+			# 本波尚未出完 / 场上仍有存活僵尸时都不允许提前出波
+			wm._early_trigger_at = -1.0
+			wm._pending.append({"t": 1.0e9, "type": "basic"})
+			wm._update_early_trigger()
+			_check("本波尚未出完时不触发加速", wm._early_trigger_at < 0.0)
+			wm._pending.clear()
+			var probe := ZombieBase.new()
+			probe.setup("basic", 0, GameConfig.ZOMBIE_SPAWN_X, router.game)
+			wm.zombies.append(probe)
+			router.game.zombies_root.add_child(probe)
+			wm._update_early_trigger()
+			_check("场上有存活僵尸时不触发加速", wm._early_trigger_at < 0.0)
+			wm.zombies.erase(probe)
+			probe.queue_free()
+
 	var recorded := router.current_seed_selection.size() == chosen.size()
 	if recorded:
 		for plant_id in chosen:
@@ -324,6 +397,82 @@ func _test_save() -> void:
 	SaveManager.best_kills = {0: 7, 1: 5}
 	_check("累计击杀为各关最佳击杀之和", SaveManager.total_best_kills() == 12)
 	_check("无记录时累计击杀为 0", SaveManager.best_kills_of(29) == 0)
+
+	# 存档结构：v2 分区 + 分关进度表
+	SaveManager.save()
+	var root := _read_save_json()
+	_check("存档带结构版本号",
+			int(root.get("version", 0)) == SaveManager.SAVE_VERSION)
+	var settings := _dict_of(root, "settings")
+	var progress := _dict_of(root, "progress")
+	var levels := _dict_of(progress, "levels")
+	_check("设置与进度分区落盘",
+			settings.has("bgm_volume") and progress.has("unlocked_level") \
+			and not levels.is_empty())
+	var level0 := _dict_of(levels, "0")
+	_check("分关进度表记通关与最佳击杀",
+			bool(level0.get("cleared", false)) and int(level0.get("best_kills", 0)) == 7)
+
+	# 旧 v1 扁平存档：字段不丢，读取后自动升级为 v2
+	var keep_bgm := SaveManager.bgm_volume
+	var keep_sfx := SaveManager.sfx_volume
+	var keep_muted := SaveManager.muted
+	var keep_cleared := SaveManager.cleared_levels.duplicate()
+	var keep_kills := SaveManager.best_kills.duplicate()
+	var keep_unlocked := SaveManager.unlocked_level
+	_write_save_json({
+		"bgm_volume": 0.25, "sfx_volume": 0.75, "muted": true,
+		"cleared_levels": [0, 2], "best_kills": {"0": 9, "2": 4},
+		"unlocked_level": 3,
+	})
+	SaveManager.load_save()
+	_check("旧存档设置迁移",
+			is_equal_approx(SaveManager.bgm_volume, 0.25) \
+			and is_equal_approx(SaveManager.sfx_volume, 0.75) and SaveManager.muted)
+	_check("旧存档进度迁移",
+			SaveManager.is_cleared(0) and SaveManager.is_cleared(2) \
+			and SaveManager.best_kills_of(0) == 9 and SaveManager.best_kills_of(2) == 4 \
+			and SaveManager.is_unlocked(3) and not SaveManager.is_unlocked(5))
+	_check("旧存档读入后自动升级为 v2",
+			int(_read_save_json().get("version", 0)) == SaveManager.SAVE_VERSION)
+
+	SaveManager.bgm_volume = keep_bgm
+	SaveManager.sfx_volume = keep_sfx
+	SaveManager.muted = keep_muted
+	SaveManager.cleared_levels = keep_cleared
+	SaveManager.best_kills = keep_kills
+	SaveManager.unlocked_level = keep_unlocked
+	SaveManager.save()
+
+
+## 读取存档 JSON（缺失或损坏时返回空字典）
+func _read_save_json() -> Dictionary:
+	var file := FileAccess.open(SaveManager.SAVE_PATH, FileAccess.READ)
+	if file == null:
+		return {}
+	var text := file.get_as_text()
+	file.close()
+	var parsed: Variant = JSON.parse_string(text)
+	if parsed is Dictionary:
+		return parsed as Dictionary
+	return {}
+
+
+## 按 v1 扁平结构写一份存档，用于校验版本迁移
+func _write_save_json(data: Dictionary) -> void:
+	var file := FileAccess.open(SaveManager.SAVE_PATH, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+
+
+## 取子字典（缺失或类型不符时返回空字典）
+func _dict_of(source: Dictionary, key: String) -> Dictionary:
+	var value: Variant = source.get(key, null)
+	if value is Dictionary:
+		return value as Dictionary
+	return {}
 
 
 # ---------------- 关卡数据 ----------------

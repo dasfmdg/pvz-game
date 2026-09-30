@@ -1,6 +1,7 @@
 class_name WaveManager
 extends Node2D
 ## 波次调度：按时间表投放僵尸（同波内错峰出场），大波追加旗帜僵尸与横幅
+## 加速规则：本波僵尸被提前全灭时，不再等时间表到点，随机等 3~7s 就进入下一波
 
 var game: MainGameManager = null
 var zombies: Array[ZombieBase] = []
@@ -10,6 +11,8 @@ var wave_index := 0
 var _elapsed := 0.0
 var _pending: Array[Dictionary] = []
 var _lane_cursor := 0
+## 提前清空后下一波的触发时刻（<0 表示未触发加速）
+var _early_trigger_at := -1.0
 
 
 func setup(game_ref: MainGameManager) -> void:
@@ -28,6 +31,7 @@ func _process(delta: float) -> void:
 	_launch_due_waves()
 	_release_pending()
 	_prune()
+	_update_early_trigger()
 	if all_spawned and alive_count() == 0:
 		all_spawned = false
 		game.on_all_zombies_cleared()
@@ -65,10 +69,30 @@ func alive_count() -> int:
 func _launch_due_waves() -> void:
 	while wave_index < game.level_waves.size():
 		var wave: Dictionary = game.level_waves[wave_index]
-		if _elapsed < float(wave["t"]):
+		if _elapsed < _wave_due_time(wave):
 			return
 		_launch_wave(wave_index, wave)
 		wave_index += 1
+		_early_trigger_at = -1.0
+
+
+## 本波出场时刻：到点必出；若上一波已被提前清空，则取更早的加速时刻
+func _wave_due_time(wave: Dictionary) -> float:
+	var scheduled := float(wave["t"])
+	if _early_trigger_at < 0.0:
+		return scheduled
+	return minf(scheduled, _early_trigger_at)
+
+
+## 场上已无存活僵尸且当前波已全部出场时，安排一次 3~7s 后的提前出波
+func _update_early_trigger() -> void:
+	if wave_index <= 0 or wave_index >= game.level_waves.size():
+		return
+	if not _pending.is_empty() or alive_count() > 0:
+		return
+	if _early_trigger_at < 0.0:
+		_early_trigger_at = _elapsed + randf_range(
+				GameConfig.WAVE_EARLY_MIN, GameConfig.WAVE_EARLY_MAX)
 
 
 func _launch_wave(index: int, wave: Dictionary) -> void:
