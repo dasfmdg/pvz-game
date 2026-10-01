@@ -27,6 +27,8 @@ var _streams: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
 var _next_player := 0
 var _bgm_player: AudioStreamPlayer
+## 是否已经过用户手势（启动页点击）允许起播；Web 端自动播放策略要求音频由手势触发
+var _bgm_armed := false
 
 
 func _ready() -> void:
@@ -67,11 +69,30 @@ func play(sound: String) -> void:
 	player.play()
 
 
+## 起播全局 BGM：在启动页点击（用户手势）后调用一次，之后菜单/选关/图鉴/关卡全程循环
+## 静音时不出声，但同样记录已具备起播条件，取消静音后由 _refresh_bgm 自动续上
 func play_bgm() -> void:
-	if is_muted or _bgm_player == null:
+	_bgm_armed = true
+	_refresh_bgm()
+
+
+## BGM 是否已具备起播条件（已收到过用户手势）；供校验与排查使用
+func is_bgm_armed() -> bool:
+	return _bgm_armed
+
+
+## 按当前静音状态同步 BGM：未起播则起播，已起播则暂停/恢复
+func _refresh_bgm() -> void:
+	if not _bgm_armed or _bgm_player == null:
 		return
-	if not _bgm_player.playing:
-		_bgm_player.play()
+	if is_muted:
+		if _bgm_player.playing:
+			_bgm_player.stream_paused = true
+		return
+	if _bgm_player.playing:
+		_bgm_player.stream_paused = false
+		return
+	_bgm_player.play()
 
 
 func stop_bgm() -> void:
@@ -81,18 +102,15 @@ func stop_bgm() -> void:
 
 func set_muted(muted: bool) -> void:
 	is_muted = muted
-	if _bgm_player != null:
-		_bgm_player.stream_paused = muted
 	if muted:
 		for player in _players:
 			player.stop()
+	_refresh_bgm()
 	EventBus.sound_muted.emit(is_muted)
 
 
 func toggle_mute() -> void:
 	set_muted(not is_muted)
-	if not is_muted:
-		play_bgm()
 
 
 ## 设置 BGM 音量（线性 0.0~1.0），实时作用于播放器

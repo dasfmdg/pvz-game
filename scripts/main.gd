@@ -54,6 +54,8 @@ func show_splash() -> void:
 	_clear_game()
 	_hide_game_over()
 	var screen := SplashScreen.new()
+	# 启动页点击是页面里的第一次用户手势：此时起播全局 BGM（Web 端自动播放策略要求）
+	screen.dismissed.connect(SoundManager.play_bgm)
 	screen.dismissed.connect(show_menu)
 	_set_screen(screen)
 

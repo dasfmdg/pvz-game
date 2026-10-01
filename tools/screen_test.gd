@@ -60,6 +60,7 @@ func _test_router() -> void:
 	await get_tree().process_frame
 	_check("加载页确认后进入主菜单",
 			router.state == MainRouter.E_State.MENU and router.current_screen is MenuScreen)
+	_check("启动页确认后 BGM 全局起播", SoundManager.is_bgm_armed())
 	_check("主菜单含 4 个按钮",
 			router.current_screen is MenuScreen \
 			and (router.current_screen as MenuScreen).buttons.size() == 4)
@@ -595,6 +596,10 @@ func _test_settings() -> void:
 
 	screen.mute_check.button_pressed = true
 	_check("静音开关同步", SaveManager.muted and SoundManager.is_muted)
+	_check("静音不清除 BGM 起播条件", SoundManager.is_bgm_armed())
+	screen.mute_check.button_pressed = false
+	_check("取消静音后 BGM 保持已起播",
+			not SaveManager.muted and not SoundManager.is_muted and SoundManager.is_bgm_armed())
 
 	screen.queue_free()
 	await get_tree().process_frame
