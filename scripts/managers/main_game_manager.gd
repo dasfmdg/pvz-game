@@ -91,13 +91,10 @@ func _ready() -> void:
 
 
 func _create_layers() -> void:
-	var background := SpriteLibrary.make_static_sprite("lawn",
-			GameConfig.CANVAS_W, GameConfig.CANVAS_H)
+	var background := _make_lawn_background()
+	background.name = "LawnBackground"
 	background.position = Vector2(GameConfig.CANVAS_W * 0.5, GameConfig.CANVAS_H * 0.5)
 	background.z_index = -100
-	# 夜间关卡对草坪做冷色调处理：只影响背景，不压暗实体与界面
-	if is_night():
-		background.modulate = GameConfig.NIGHT_LAWN_TINT
 	add_child(background)
 
 	plants_root = _make_layer("PlantsRoot", 10)
@@ -106,6 +103,29 @@ func _create_layers() -> void:
 	bullets_root = _make_layer("BulletsRoot", 30)
 	fx_root = _make_layer("FxRoot", 40)
 	suns_root = _make_layer("SunsRoot", 50)
+
+
+## 草坪背景：夜间关卡优先用夜景素材，素材缺失时回退白天草坪 + 冷色调
+## 冷色调只作用于背景贴图，不压暗实体与界面
+func _make_lawn_background() -> Sprite2D:
+	if not is_night():
+		return SpriteLibrary.make_static_sprite("lawn",
+				GameConfig.CANVAS_W, GameConfig.CANVAS_H)
+	var night_tex: Texture2D = null
+	if ResourceLoader.exists(GameConfig.NIGHT_LAWN_PATH):
+		night_tex = SpriteLibrary.texture(GameConfig.NIGHT_LAWN_PATH)
+	if night_tex == null:
+		var fallback := SpriteLibrary.make_static_sprite("lawn",
+				GameConfig.CANVAS_W, GameConfig.CANVAS_H)
+		fallback.modulate = GameConfig.NIGHT_LAWN_TINT
+		return fallback
+	var sprite := Sprite2D.new()
+	sprite.texture = night_tex
+	var tex_size := night_tex.get_size()
+	if tex_size.x > 0.0 and tex_size.y > 0.0:
+		sprite.scale = Vector2(GameConfig.CANVAS_W / tex_size.x,
+				GameConfig.CANVAS_H / tex_size.y)
+	return sprite
 
 
 func _make_layer(layer_name: String, layer_z: int) -> Node2D:

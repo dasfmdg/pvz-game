@@ -552,6 +552,9 @@ const SCENE_DAY := "day"
 const SCENE_NIGHT := "night"
 ## 夜间草坪色调：只对背景贴图做 modulate，不压暗实体与界面
 const NIGHT_LAWN_TINT := Color(0.42, 0.5, 0.74)
+## 夜间草坪素材：与 lawn.png 同构图的夜景版本
+## 文件缺失时自动回退 lawn.png + NIGHT_LAWN_TINT，不阻断游戏
+const NIGHT_LAWN_PATH := "res://assets/lawn_night.png"
 
 
 ## 关卡数据（index 0 基，越界返回空字典）

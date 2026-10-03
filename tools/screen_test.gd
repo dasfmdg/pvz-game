@@ -149,6 +149,38 @@ func _test_router() -> void:
 	_check("夜间关卡卡片与解锁表一致",
 			router.game != null \
 			and router.game.level_plants.size() == GameConfig.plants_for_level(16).size())
+	_check("夜间草坪素材路径已接线为 assets 下的 PNG",
+			GameConfig.NIGHT_LAWN_PATH.begins_with("res://assets/") \
+			and GameConfig.NIGHT_LAWN_PATH.ends_with(".png"))
+	var night_bg: Sprite2D = null
+	if router.game != null:
+		night_bg = router.game.get_node_or_null("LawnBackground") as Sprite2D
+	_check("夜间关卡存在草坪背景节点", night_bg != null)
+	if ResourceLoader.exists(GameConfig.NIGHT_LAWN_PATH):
+		_check("夜景素材到位时直接使用夜景贴图",
+				night_bg != null and night_bg.texture != null \
+				and night_bg.texture.resource_path == GameConfig.NIGHT_LAWN_PATH)
+		_check("夜景素材到位时不再额外染色",
+				night_bg != null and night_bg.modulate.is_equal_approx(Color.WHITE))
+	else:
+		_check("夜景素材缺失时回退白天草坪",
+				night_bg != null and night_bg.texture != null \
+				and night_bg.texture.resource_path == "res://assets/lawn.png")
+		_check("夜景素材缺失时草坪转冷色调",
+				night_bg != null \
+				and night_bg.modulate.is_equal_approx(GameConfig.NIGHT_LAWN_TINT))
+	router.return_to_level_select()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	# 白天关卡背景不应被染色
+	router.start_level(0)
+	await get_tree().process_frame
+	var day_bg: Sprite2D = null
+	if router.game != null:
+		day_bg = router.game.get_node_or_null("LawnBackground") as Sprite2D
+	_check("白天关卡草坪不做冷色调处理",
+			day_bg != null and day_bg.modulate.is_equal_approx(Color.WHITE))
 	router.return_to_level_select()
 	await get_tree().process_frame
 	await get_tree().process_frame

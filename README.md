@@ -127,6 +127,7 @@ python tools/gen_sprite_meta.py ../pvzcode/js/sprites-meta.js scripts/data/sprit
 - 夜景目前只做了草坪冷色调，未加月亮/路灯等美术元素。这块**等美术素材再动**：`assets/lawn.png`
   是俯视后院草坪，上方是白色围栏、左侧是房屋屋顶，没有天空区，月亮无处安放，因此不做程序化模拟。
   需要的素材是 `assets/lawn_night.png`（1920×1080 PNG，与 `assets/lawn.png` 同构图，草坪网格区
-  x 606~1911 / y 178~1023 保持干净以免干扰辨识）。素材到位后的接线：`game_config.gd` 增加
-  `NIGHT_LAWN_PATH` 常量，`main_game_manager.gd` 夜间关卡优先加载夜间背景，文件缺失时回退到现在的
-  `lawn.png + NIGHT_LAWN_TINT`（不阻断游戏），并补一条 screen_test 断言。
+  x 606~1911 / y 178~1023 保持干净以免干扰辨识）。**接线已完成**：`game_config.gd` 已定义
+  `NIGHT_LAWN_PATH`，`main_game_manager.gd` 的夜间关卡会优先加载该素材，文件缺失时自动回退到
+  `lawn.png + NIGHT_LAWN_TINT`（不阻断游戏）。因此**只需把 `assets/lawn_night.png` 放进目录**，
+  夜景立绘即刻生效，无需再改代码。
