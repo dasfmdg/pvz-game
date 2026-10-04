@@ -24,6 +24,9 @@ const SKY_SUN_VALUE := 50
 const NIGHT_SKY_SUN_ENABLED := false
 const SUNFLOWER_SUN_VALUE := 50
 const SUN_LIFETIME := 12.0
+## 阳光收集飞行动画：飞向 HUD 计数框的时长（秒）与终点缩放
+const SUN_FLY_TIME := 0.55
+const SUN_FLY_END_SCALE := 0.4
 
 # ---------------- 植物 ----------------
 ## cost 价格 / hp 生命 / recharge 卡片冷却(秒) / sheet 精灵表

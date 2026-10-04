@@ -5,6 +5,9 @@ extends CanvasLayer
 
 const SUN_BOX_POS := Vector2(24.0, 18.0)
 const SUN_BOX_SIZE := Vector2(186.0, 74.0)
+## 计数框内阳光图标的相对偏移与尺寸（阳光飞行动画终点由此推导）
+const SUN_ICON_INSET := Vector2(8.0, 9.0)
+const SUN_ICON_SIZE := Vector2(56.0, 56.0)
 const WAVE_PANEL_POS := Vector2(1386.0, 14.0)
 const WAVE_PANEL_SIZE := Vector2(398.0, 76.0)
 const WAVE_BAR_INSET := Vector2(12.0, 6.0)
@@ -106,8 +109,8 @@ func _build_sun_counter(root: Control) -> void:
 	icon.texture = SpriteLibrary.static_texture("sun")
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_SCALE
-	icon.position = SUN_BOX_POS + Vector2(8.0, 9.0)
-	icon.size = Vector2(56.0, 56.0)
+	icon.position = SUN_BOX_POS + SUN_ICON_INSET
+	icon.size = SUN_ICON_SIZE
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(icon)
 
@@ -420,6 +423,11 @@ func _build_overlay(root: Control) -> void:
 
 
 # ---------------- 对外 ----------------
+## 阳光计数框图标的中心点（画布坐标）：阳光收集飞行动画的终点
+func sun_box_center() -> Vector2:
+	return SUN_BOX_POS + SUN_ICON_INSET + SUN_ICON_SIZE * 0.5
+
+
 ## 当前关卡总波数（未接管主控时回退全局配置）
 func _total_waves() -> int:
 	if game != null:

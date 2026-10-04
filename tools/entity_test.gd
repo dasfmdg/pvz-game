@@ -2,7 +2,7 @@ extends Node
 ## 临时校验脚本（非游戏代码）：实体层单元校验
 ## 覆盖：6 种僵尸（顶具剥离 / 破损外观 / 减速 / 死亡 / 烧焦 / 无视顶具直杀）、
 ##       11 种植物实例化与扣费铲除、食人花吞噬、倭瓜压扁、土豆雷武装引爆、
-##       樱桃 3×3、辣椒整行烧焦、寒冰减速
+##       樱桃 3×3、辣椒整行烧焦、寒冰减速、阳光收集飞行动画
 ## 用法：godot --headless --fixed-fps 60 --quit-after 2400 --path <proj> res://tools/entity_test.tscn
 
 const ZOMBIE_IDS: Array = ["basic", "cone", "bucket", "football", "door", "flag"]
@@ -52,7 +52,9 @@ func _ready() -> void:
 		{"t": 24.0, "cb": _stage_jalapeno_check},
 		{"t": 24.5, "cb": _stage_snowpea_place},
 		{"t": 28.0, "cb": _stage_snowpea_check},
-		{"t": 29.0, "cb": _stage_final},
+		{"t": 29.0, "cb": _stage_sun_fly_start},
+		{"t": 29.8, "cb": _stage_sun_fly_check},
+		{"t": 30.2, "cb": _stage_final},
 	]
 	print("[TEST] 实体层校验开始（波次已隔离）")
 
@@ -293,6 +295,25 @@ func _stage_snowpea_check() -> void:
 		slowed = (raw as ZombieBase)._slow_timer > 0.0 \
 				and (raw as ZombieBase).sprite.modulate == ZombieBase.FROZEN_TINT
 	_check("寒冰射手命中后僵尸进入减速（%s）" % _state_of(raw), slowed)
+
+
+func _stage_sun_fly_start() -> void:
+	print("[TEST] --- 阳光收集飞行动画 ---")
+	game.spawn_sun(Vector2(900.0, 600.0), GameConfig.SUNFLOWER_SUN_VALUE, "plant")
+	var sun: SunItem = game.sun_manager.suns.back()
+	_refs["sun_fly_node"] = sun
+	_refs["sun_fly_before"] = game.sun
+	_refs["sun_fly_value"] = sun.value
+	var hit := game.sun_manager.try_collect_at(sun.global_position)
+	_check("点击命中阳光并进入飞行动画", hit and is_instance_valid(sun))
+	_check("飞行途中阳光数不提前增加", game.sun == int(_refs["sun_fly_before"]))
+
+
+func _stage_sun_fly_check() -> void:
+	var raw: Variant = _refs.get("sun_fly_node")
+	var expected: int = int(_refs["sun_fly_before"]) + int(_refs["sun_fly_value"])
+	_check("飞抵计数框后阳光入账", game.sun == expected)
+	_check("飞抵计数框后阳光节点销毁", raw == null or not is_instance_valid(raw))
 
 
 func _stage_final() -> void:

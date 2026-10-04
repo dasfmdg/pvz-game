@@ -185,6 +185,13 @@ func _test_router() -> void:
 	# 波次进度条升级：大波旗帜刻度 + 迷你僵尸标记 + 平滑追赶（均在白天关卡断言）
 	var hud: GameHud = router.game.hud if router.game != null else null
 	_check("关卡内 HUD 存在", hud != null)
+	var sun_center := hud.sun_box_center() if hud != null else Vector2.ZERO
+	_check("阳光飞行动画终点落在计数框内",
+			hud != null \
+			and sun_center.x > GameHud.SUN_BOX_POS.x \
+			and sun_center.x < GameHud.SUN_BOX_POS.x + GameHud.SUN_BOX_SIZE.x \
+			and sun_center.y > GameHud.SUN_BOX_POS.y \
+			and sun_center.y < GameHud.SUN_BOX_POS.y + GameHud.SUN_BOX_SIZE.y)
 	var tick3: ColorRect = null
 	var marker: TextureRect = null
 	if hud != null:

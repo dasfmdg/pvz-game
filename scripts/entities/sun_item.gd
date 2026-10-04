@@ -74,15 +74,32 @@ func _land() -> void:
 	_life = GameConfig.SUN_LIFETIME
 
 
+## 点击收集：飞向 HUD 计数框，抵达后才入账并销毁（数字与观感同步）
 func collect() -> void:
 	if _is_collected:
 		return
 	_is_collected = true
-	if game != null:
-		game.add_sun(value)
+	modulate.a = 1.0
 	var tween := create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(self, "scale", Vector2(1.45, 1.45), 0.18)
-	tween.tween_property(self, "modulate:a", 0.0, 0.18)
+	tween.tween_property(self, "global_position", _fly_target(), GameConfig.SUN_FLY_TIME) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.tween_property(self, "scale",
+			Vector2.ONE * GameConfig.SUN_FLY_END_SCALE, GameConfig.SUN_FLY_TIME) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.set_parallel(false)
-	tween.tween_callback(queue_free)
+	tween.tween_callback(_on_fly_arrived)
+
+
+## 飞行终点：HUD 计数框图标中心；HUD 缺失时原地结算，绝不卡住入账
+func _fly_target() -> Vector2:
+	if game != null and game.hud != null:
+		return game.hud.sun_box_center()
+	return global_position
+
+
+## 飞抵计数框后入账并销毁
+func _on_fly_arrived() -> void:
+	if game != null:
+		game.add_sun(value)
+	queue_free()
