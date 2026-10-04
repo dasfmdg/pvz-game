@@ -15,6 +15,17 @@ const WAVE_BAR_BG_COLOR := Color(0.07, 0.06, 0.04, 0.92)
 const WAVE_BAR_BORDER_COLOR := Color(0.38, 0.3, 0.18)
 const WAVE_BAR_FILL_COLOR := Color(0.42, 0.76, 0.3)
 const WAVE_BAR_HUGE_FILL_COLOR := Color(0.86, 0.28, 0.22)
+## 进度条追赶速度（波/秒）：波次到达时平滑推进而非瞬跳
+const WAVE_BAR_CHASE_SPEED := 4.0
+## 大波旗帜刻度：旗杆宽度、旗帜尺寸与「未升起 / 已升起」两套配色
+const WAVE_TICK_WIDTH := 2.0
+const WAVE_FLAG_SIZE := Vector2(12.0, 9.0)
+const WAVE_TICK_COLOR_PENDING := Color(0.42, 0.34, 0.18, 0.9)
+const WAVE_TICK_COLOR_RAISED := Color(1.0, 0.85, 0.32)
+const WAVE_FLAG_COLOR_PENDING := Color(0.4, 0.32, 0.16, 0.85)
+const WAVE_FLAG_COLOR_RAISED := Color(0.96, 0.74, 0.2)
+## 迷你僵尸标记：随进度沿条身从左向右推进，复用行走精灵表首帧（零新素材）
+const WAVE_MARKER_SIZE := Vector2(30.0, 26.0)
 const HINT_TEXT := "1-9 select card    P pause    M mute    Esc cancel    Click plant / shovel to dig"
 
 ## 暂停面板：半透明底 + 标题 + 存/读档按钮 + 状态行（HUD 文案统一英文）
@@ -36,6 +47,15 @@ var _sun_label: Label = null
 var _wave_label: Label = null
 var _progress: ProgressBar = null
 var _bar_fill_style: StyleBoxFlat = null
+## 进度条显示值与目标值（波数）：显示值逐帧追赶目标值，实现平滑推进
+var _wave_bar_display := 0.0
+var _wave_bar_target := 0.0
+## 当前关卡大波的 1 基序号，以及对应的旗杆刻度与旗帜节点
+var _huge_waves: Array[int] = []
+var _tick_marks: Array[ColorRect] = []
+var _tick_flags: Array[Polygon2D] = []
+## 迷你僵尸标记：随进度推进；精灵表缺失时为 null
+var _wave_marker: TextureRect = null
 var _banner: Label = null
 var _pause_panel: Control = null
 var _pause_status: Label = null
@@ -128,7 +148,7 @@ func _build_wave_panel(root: Control) -> void:
 	_wave_label.text = "Wave 0 / %d" % _total_waves()
 	root.add_child(_wave_label)
 
-	# 波数进度条：每波到达推进一步，满格即最后一波；大波时填充色转红
+	# 波数进度条：逐帧追赶目标波数实现平滑推进；大波位置预置旗帜刻度，到达后升起
 	_progress = ProgressBar.new()
 	_progress.position = WAVE_PANEL_POS + Vector2(WAVE_BAR_INSET.x, WAVE_BAR_OFFSET_Y)
 	_progress.size = WAVE_BAR_SIZE
@@ -143,6 +163,82 @@ func _build_wave_panel(root: Control) -> void:
 			WAVE_BAR_FILL_COLOR, WAVE_BAR_FILL_COLOR, 0, 4)
 	_progress.add_theme_stylebox_override("fill", _bar_fill_style)
 	root.add_child(_progress)
+	_build_wave_ticks(root)
+	_build_wave_marker(root)
+
+
+## 大波旗帜刻度：按大波在总波数中的位置，在进度条上放置旗杆与旗帜
+## 未到达为暗色，到达后升起为亮金色；节点名形如 WaveTick3 / WaveFlag3（波次为 1 基）
+func _build_wave_ticks(root: Control) -> void:
+	_huge_waves = _huge_wave_indices()
+	if _huge_waves.is_empty():
+		return
+	var total := float(maxi(_total_waves(), 1))
+	var bar_pos := WAVE_PANEL_POS + Vector2(WAVE_BAR_INSET.x, WAVE_BAR_OFFSET_Y)
+	for wave_num in _huge_waves:
+		var center_x := bar_pos.x + WAVE_BAR_SIZE.x * (float(wave_num) / total)
+
+		var mark := ColorRect.new()
+		mark.name = "WaveTick%d" % wave_num
+		mark.color = WAVE_TICK_COLOR_PENDING
+		mark.position = Vector2(center_x - WAVE_TICK_WIDTH * 0.5, bar_pos.y)
+		mark.size = Vector2(WAVE_TICK_WIDTH, WAVE_BAR_SIZE.y)
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(mark)
+		_tick_marks.append(mark)
+
+		# 旗杆顶部向右飘出的三角旗，整块保持在进度条高度内，不挤压上方波次文字
+		var flag := Polygon2D.new()
+		flag.name = "WaveFlag%d" % wave_num
+		flag.color = WAVE_FLAG_COLOR_PENDING
+		flag.polygon = PackedVector2Array([
+			Vector2(0.0, 0.0),
+			Vector2(WAVE_FLAG_SIZE.x, WAVE_FLAG_SIZE.y * 0.5),
+			Vector2(0.0, WAVE_FLAG_SIZE.y),
+		])
+		flag.position = Vector2(center_x - WAVE_TICK_WIDTH * 0.5, bar_pos.y + 4.0)
+		root.add_child(flag)
+		_tick_flags.append(flag)
+
+
+## 当前关卡大波的 1 基序号；未接管主控时回退全局配置
+func _huge_wave_indices() -> Array[int]:
+	var waves: Array = game.level_waves if game != null else GameConfig.WAVES
+	var out: Array[int] = []
+	for i in waves.size():
+		if bool((waves[i] as Dictionary).get("huge", false)):
+			out.append(i + 1)
+	return out
+
+
+## 迷你僵尸标记：复用行走精灵表首帧，沿进度条从左向右推进（零新素材）
+## 精灵表缺失时不创建，不阻断 HUD
+func _build_wave_marker(root: Control) -> void:
+	var head := UiKit.sheet_first_frame("z_basic_walk")
+	if head == null:
+		return
+	_wave_marker = TextureRect.new()
+	_wave_marker.name = "WaveMarker"
+	_wave_marker.texture = head
+	_wave_marker.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_wave_marker.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_wave_marker.size = WAVE_MARKER_SIZE
+	_wave_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_wave_marker)
+	_place_wave_marker()
+
+
+## 按当前进度把迷你僵尸摆到条身对应位置（首尾均保持在条内）
+func _place_wave_marker() -> void:
+	if _wave_marker == null:
+		return
+	var total := float(maxi(_total_waves(), 1))
+	var bar_pos := WAVE_PANEL_POS + Vector2(WAVE_BAR_INSET.x, WAVE_BAR_OFFSET_Y)
+	var travel := maxf(WAVE_BAR_SIZE.x - WAVE_MARKER_SIZE.x, 0.0)
+	var ratio := clampf(_wave_bar_display / total, 0.0, 1.0)
+	_wave_marker.position = Vector2(
+			bar_pos.x + travel * ratio,
+			bar_pos.y + (WAVE_BAR_SIZE.y - WAVE_MARKER_SIZE.y) * 0.5)
 
 
 func _make_bar_stylebox(fill_color: Color, border_color: Color,
@@ -378,8 +474,8 @@ func _on_sun_changed(value: int) -> void:
 func _on_wave_started(index: int, total_waves: int, is_huge: bool) -> void:
 	if _wave_label != null:
 		_wave_label.text = "Wave %d / %d" % [index, total_waves]
-	if _progress != null:
-		_progress.value = float(index)
+	# 只设目标值，由 _process 逐帧追赶，避免进度条瞬跳
+	_wave_bar_target = float(index)
 	_update_bar_fill_color(is_huge)
 	if is_huge:
 		show_banner("A HUGE WAVE OF ZOMBIES IS APPROACHING!")
@@ -395,6 +491,37 @@ func _update_bar_fill_color(is_huge: bool) -> void:
 			else WAVE_BAR_FILL_COLOR
 	if _progress != null:
 		_progress.queue_redraw()
+
+
+func _process(delta: float) -> void:
+	_update_wave_bar(delta)
+
+
+## 进度条显示值逐帧追赶目标波数：追赶而非瞬跳，让每波推进有可见动画
+func _update_wave_bar(delta: float) -> void:
+	if _progress == null:
+		return
+	if is_equal_approx(_wave_bar_display, _wave_bar_target):
+		_wave_bar_display = _wave_bar_target
+	else:
+		_wave_bar_display = move_toward(_wave_bar_display, _wave_bar_target,
+				WAVE_BAR_CHASE_SPEED * delta)
+	_progress.value = _wave_bar_display
+	_refresh_tick_states()
+	_place_wave_marker()
+
+
+## 已到达的大波刻度与旗帜换成升起的亮金色，未到达保持暗色
+## 换色前先比较，避免每帧重复赋值触发无谓重绘
+func _refresh_tick_states() -> void:
+	for i in _huge_waves.size():
+		var raised := _wave_bar_display >= float(_huge_waves[i]) - 0.001
+		var tick_color := WAVE_TICK_COLOR_RAISED if raised else WAVE_TICK_COLOR_PENDING
+		var flag_color := WAVE_FLAG_COLOR_RAISED if raised else WAVE_FLAG_COLOR_PENDING
+		if i < _tick_marks.size() and _tick_marks[i].color != tick_color:
+			_tick_marks[i].color = tick_color
+		if i < _tick_flags.size() and _tick_flags[i].color != flag_color:
+			_tick_flags[i].color = flag_color
 
 
 func _on_game_paused(is_paused: bool) -> void:

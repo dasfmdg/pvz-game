@@ -181,6 +181,34 @@ func _test_router() -> void:
 		day_bg = router.game.get_node_or_null("LawnBackground") as Sprite2D
 	_check("白天关卡草坪不做冷色调处理",
 			day_bg != null and day_bg.modulate.is_equal_approx(Color.WHITE))
+
+	# 波次进度条升级：大波旗帜刻度 + 迷你僵尸标记 + 平滑追赶（均在白天关卡断言）
+	var hud: GameHud = router.game.hud if router.game != null else null
+	_check("关卡内 HUD 存在", hud != null)
+	var tick3: ColorRect = null
+	var marker: TextureRect = null
+	if hud != null:
+		tick3 = hud.get_node_or_null("HudRoot/WaveTick3") as ColorRect
+		marker = hud.get_node_or_null("HudRoot/WaveMarker") as TextureRect
+	_check("第 1 关大波刻度落在第 3 波", tick3 != null)
+	_check("非大波位置不生成刻度",
+			hud != null and hud.get_node_or_null("HudRoot/WaveTick1") == null)
+	_check("未到达的大波刻度为暗色",
+			tick3 != null \
+			and tick3.color.is_equal_approx(GameHud.WAVE_TICK_COLOR_PENDING))
+	_check("进度条含迷你僵尸标记", marker != null)
+	var marker_start_x := marker.position.x if marker != null else 0.0
+
+	# 触发大波：刻度应升起为亮金色，标记应随平滑推进右移
+	EventBus.wave_started.emit(3, 3, true)
+	for _i in 90:
+		await get_tree().process_frame
+	_check("大波到达后刻度升起为亮金色",
+			tick3 != null \
+			and tick3.color.is_equal_approx(GameHud.WAVE_TICK_COLOR_RAISED))
+	_check("进度条平滑推进后僵尸标记右移",
+			marker != null and marker.position.x > marker_start_x)
+
 	router.return_to_level_select()
 	await get_tree().process_frame
 	await get_tree().process_frame
