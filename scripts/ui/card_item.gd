@@ -58,7 +58,7 @@ func _build() -> void:
 	_icon = TextureRect.new()
 	_icon.texture = SpriteLibrary.card_texture(plant_id)
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_icon.stretch_mode = TextureRect.STRETCH_SCALE
+	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_icon.offset_left = PAD
 	_icon.offset_top = PAD

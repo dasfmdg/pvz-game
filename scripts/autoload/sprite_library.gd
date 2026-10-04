@@ -25,6 +25,13 @@ const CARD_TEXTURES := {
 	"potato_mine": "res://assets/card_potato_mine.png",
 	"squash": "res://assets/card_squash.png",
 	"chomper": "res://assets/card_chomper.png",
+	"melonpult": "res://assets/card_melonpult.png",
+}
+
+## 卡片图切分区域：素材为多帧拼图时只取其中一帧
+## melonpult 的卡片图是「彩色 + 置灰」上下双帧，只取上半帧作为卡面
+const CARD_REGIONS := {
+	"melonpult": Rect2(0.0, 0.0, 100.0, 60.0),
 }
 
 var _texture_cache: Dictionary = {}
@@ -55,7 +62,38 @@ func static_texture(key: String) -> Texture2D:
 
 
 func card_texture(plant_id: String) -> Texture2D:
-	return texture(String(CARD_TEXTURES.get(plant_id, "")))
+	var tex := texture(String(CARD_TEXTURES.get(plant_id, "")))
+	if tex == null or not CARD_REGIONS.has(plant_id):
+		return tex
+	var region := AtlasTexture.new()
+	region.atlas = tex
+	region.region = CARD_REGIONS[plant_id]
+	return region
+
+
+## sheet 值是否指向静态单图素材（非精灵表）
+func is_static_key(key: String) -> bool:
+	return STATIC_TEXTURES.has(key)
+
+
+## 用静态单图构造单帧 AnimatedSprite2D（供只有单图素材、无精灵表的植物使用）
+## 保持与精灵表植物相同的节点类型，避免调用方分支判型
+func make_static_anim_sprite(key: String, draw_w: float, draw_h: float) -> AnimatedSprite2D:
+	var sprite := AnimatedSprite2D.new()
+	var frames := SpriteFrames.new()
+	frames.remove_animation("default")
+	frames.add_animation("main")
+	frames.set_animation_loop("main", true)
+	var tex := static_texture(key)
+	if tex != null:
+		frames.add_frame("main", tex)
+		var tex_size := tex.get_size()
+		if tex_size.x > 0.0 and tex_size.y > 0.0:
+			sprite.scale = Vector2(draw_w / tex_size.x, draw_h / tex_size.y)
+	sprite.sprite_frames = frames
+	sprite.animation = "main"
+	sprite.play()
+	return sprite
 
 
 ## 构建动画集：anim_sheets = { 动画名: 精灵表名 }，once_anims 中的动画只播放一次

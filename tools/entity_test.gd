@@ -1,8 +1,8 @@
 extends Node
 ## 临时校验脚本（非游戏代码）：实体层单元校验
 ## 覆盖：6 种僵尸（顶具剥离 / 破损外观 / 减速 / 死亡 / 烧焦 / 无视顶具直杀）、
-##       11 种植物实例化与扣费铲除、食人花吞噬、倭瓜压扁、土豆雷武装引爆、
-##       樱桃 3×3、辣椒整行烧焦、寒冰减速、阳光收集飞行动画
+##       12 种植物实例化与扣费铲除、食人花吞噬、倭瓜压扁、土豆雷武装引爆、
+##       樱桃 3×3、辣椒整行烧焦、寒冰减速、西瓜投手直伤与溅射、阳光收集飞行动画
 ## 用法：godot --headless --fixed-fps 60 --quit-after 2400 --path <proj> res://tools/entity_test.tscn
 
 const ZOMBIE_IDS: Array = ["basic", "cone", "bucket", "football", "door", "flag"]
@@ -19,6 +19,7 @@ const PLANT_CLASSES: Dictionary = {
 	"squash": "PlantSquash",
 	"chomper": "PlantChomper",
 	"potato_mine": "PlantPotatoMine",
+	"melonpult": "PlantMelonPult",
 }
 
 var game: MainGameManager = null
@@ -46,6 +47,8 @@ func _ready() -> void:
 		{"t": 4.2, "cb": _stage_cherry_check},
 		{"t": 5.5, "cb": _stage_squash_check},
 		{"t": 6.0, "cb": _stage_shooter_check},
+		{"t": 6.2, "cb": _stage_melon_place},
+		{"t": 9.5, "cb": _stage_melon_check},
 		{"t": 19.0, "cb": _stage_mine_spawn},
 		{"t": 21.0, "cb": _stage_mine_check},
 		{"t": 21.5, "cb": _stage_jalapeno_place},
@@ -104,6 +107,25 @@ func _state_of(raw: Variant) -> String:
 	if raw == null or not is_instance_valid(raw):
 		return "已销毁"
 	return "状态%d" % (raw as ZombieBase).state
+
+
+func _hp_of(raw: Variant) -> int:
+	if raw == null or not is_instance_valid(raw):
+		return -1
+	return (raw as ZombieBase).hp
+
+
+func _is_slowed(raw: Variant) -> bool:
+	if raw == null or not is_instance_valid(raw):
+		return false
+	var zombie := raw as ZombieBase
+	return zombie._slow_timer > 0.0 and zombie.sprite.modulate == ZombieBase.FROZEN_TINT
+
+
+## 用例收尾：移除本轮探针僵尸，避免继续前进破坏后续用例（如啃掉土豆地雷）
+func _despawn(raw: Variant) -> void:
+	if raw != null and is_instance_valid(raw):
+		(raw as Node).queue_free()
 
 
 # ---------------- 用例 ----------------
@@ -166,6 +188,7 @@ func _stage_plant_matrix() -> void:
 		cells.append(Vector2i(8, row))
 		cells.append(Vector2i(7, row))
 	cells.append(Vector2i(6, 0))
+	cells.append(Vector2i(6, 1))
 	var index := 0
 	for raw_id in GameConfig.PLANT_ORDER:
 		var plant_id := String(raw_id)
@@ -252,6 +275,42 @@ func _stage_shooter_check() -> void:
 	if raw != null and is_instance_valid(raw):
 		current = (raw as ZombieBase).hp
 	_check("豌豆射手命中僵尸（剩余生命=%d/200）" % current, current > 0 and current < 200)
+
+
+func _stage_melon_place() -> void:
+	print("[TEST] --- 西瓜投手 ---")
+	game.grid_manager.place_plant("melonpult", Vector2i(1, 2))
+	_refs["melon_plant"] = game.grid_manager.plant_at(Vector2i(1, 2))
+	# 同一 x 上摆放相邻三行僵尸：中间行为直击目标，上下两行验证溅射
+	_refs["melon_group"] = [
+		_spawn("basic", 1, 1300.0),
+		_spawn("basic", 2, 1300.0),
+		_spawn("basic", 3, 1300.0),
+	]
+
+
+func _stage_melon_check() -> void:
+	var direct_damage := int(GameConfig.PLANT_BEHAVIOR["melonpult"]["damage"])
+	var splash_damage := int(GameConfig.PLANT_BEHAVIOR["melonpult"]["splash_damage"])
+	var group: Array = _refs["melon_group"]
+	var direct: Variant = group[1]
+	var above: Variant = group[0]
+	var below: Variant = group[2]
+	_check("西瓜直击僵尸（剩余生命=%d/200）" % _hp_of(direct),
+			_hp_of(direct) == 200 - direct_damage)
+	_check("西瓜溅射命中上一行（剩余生命=%d/200）" % _hp_of(above),
+			_hp_of(above) == 200 - splash_damage)
+	_check("西瓜溅射命中下一行（剩余生命=%d/200）" % _hp_of(below),
+			_hp_of(below) == 200 - splash_damage)
+	_check("西瓜命中后直击目标进入减速", _is_slowed(direct))
+	_check("西瓜溅射目标同样进入减速", _is_slowed(above) and _is_slowed(below))
+	var plant: Variant = _refs.get("melon_plant")
+	_check("西瓜投手本体使用静态单图（单帧 main 动画）",
+			plant != null and is_instance_valid(plant) \
+			and (plant as PlantBase).sprite.sprite_frames.has_animation("main") \
+			and (plant as PlantBase).sprite.sprite_frames.get_frame_count("main") == 1)
+	for zombie in group:
+		_despawn(zombie)
 
 
 func _stage_mine_spawn() -> void:

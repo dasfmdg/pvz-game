@@ -62,7 +62,11 @@ func setup(plant_id_value: String, cell_value: Vector2i, game_ref: MainGameManag
 
 
 func _ready() -> void:
-	sprite = SpriteLibrary.make_sprite(_anim_sheets(), draw_size.x, draw_size.y, _once_anims())
+	var sheet := String(GameConfig.plant_data(plant_id).get("sheet", ""))
+	if SpriteLibrary.is_static_key(sheet):
+		sprite = SpriteLibrary.make_static_anim_sprite(sheet, draw_size.x, draw_size.y)
+	else:
+		sprite = SpriteLibrary.make_sprite(_anim_sheets(), draw_size.x, draw_size.y, _once_anims())
 	add_child(sprite)
 	_on_planted()
 

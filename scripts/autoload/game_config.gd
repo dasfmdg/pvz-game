@@ -77,12 +77,17 @@ const PLANTS := {
 		"name": "Chomper", "cost": 150, "hp": 300, "recharge": 11.0,
 		"sheet": "chomper_idle", "dw": 96.0, "dh": 112.0,
 	},
+	## melonpult 的 sheet 指向静态单图素材（STATIC_TEXTURES 中的 key），无精灵表
+	"melonpult": {
+		"name": "Melon-pult", "cost": 300, "hp": 300, "recharge": 8.0,
+		"sheet": "melon", "dw": 104.0, "dh": 131.0,
+	},
 }
 
 ## 卡槽顺序
 const PLANT_ORDER: Array[String] = [
 	"sunflower", "peashooter", "wallnut", "cherrybomb", "repeater", "jalapeno",
-	"snowpea", "threepeater", "squash", "chomper", "potato_mine",
+	"snowpea", "threepeater", "squash", "chomper", "potato_mine", "melonpult",
 ]
 
 ## 植物解锁关卡（1 基，语义与参考实现 js/game.js isPlantAvailable 一致：unlockLevel <= 关卡序号）
@@ -90,7 +95,7 @@ const PLANT_ORDER: Array[String] = [
 const PLANT_UNLOCK := {
 	"sunflower": 0, "peashooter": 0, "wallnut": 3, "potato_mine": 4, "cherrybomb": 5,
 	"repeater": 7, "jalapeno": 9, "snowpea": 11, "squash": 13, "chomper": 15,
-	"threepeater": 17,
+	"threepeater": 17, "melonpult": 17,
 }
 
 ## 植物行为参数
@@ -105,6 +110,11 @@ const PLANT_BEHAVIOR := {
 	"chomper": {"trigger_x": 60.0, "damage": 1800, "rest_time": 15.0},
 	"cherrybomb": {"fuse": 1.15, "damage": 1800},
 	"jalapeno": {"fuse": 1.15, "damage": 1800},
+	## 西瓜投手：直伤 + 3×3 溅射，命中附减速（对齐参考实现 seed.sql / js 溅射逻辑）
+	"melonpult": {
+		"fire_interval": 3.0, "first_fire": 0.8,
+		"damage": 80, "splash_damage": 40, "slow": true,
+	},
 }
 
 # ---------------- 僵尸 ----------------
@@ -658,6 +668,12 @@ const PEA_SPEED := 430.0
 const PEA_DRAW := 34.0
 const ICE_PEA_SPEED := 430.0
 const ICE_PEA_DRAW := 38.0
+## 西瓜投手弹道：melon.png 为 50×63 静态单图，绘制尺寸按等比取 46×58
+const MELON_SPEED := 300.0
+const MELON_DRAW_W := 46.0
+const MELON_DRAW_H := 58.0
+## 投掷弧线振幅（像素）：仅叠加在弹体视觉纵向上，不参与命中判定
+const MELON_ARC_HEIGHT := 34.0
 
 # ---------------- 特效尺寸 ----------------
 const FX_SUN_D := 76.0

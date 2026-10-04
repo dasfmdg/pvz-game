@@ -1,7 +1,7 @@
 class_name AlmanacScreen
 extends Control
 ## 植物图鉴：植物 / 僵尸两个分页，卡片展示名称、阳光、冷却、血量
-## 植物卡 11 张、僵尸卡 6 张；无专属立绘时用卡片图或精灵表首帧兜底
+## 植物卡 12 张、僵尸卡 6 张；无专属立绘时用卡片图或精灵表首帧兜底
 
 signal back_pressed()
 

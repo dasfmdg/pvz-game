@@ -219,6 +219,13 @@ func spawn_bullet(lane: int, pos_x: float, pos_y: float, damage: int, is_ice: bo
 	bullets_root.add_child(bullet)
 
 
+## 西瓜投手弹道：直线飞行 + 命中溅射，弹体自带视觉弧线
+func spawn_melon(lane: int, pos: Vector2, damage: int, splash_damage: int, slows: bool) -> void:
+	var melon := MelonBullet.new()
+	melon.setup(lane, pos, damage, splash_damage, slows, self)
+	bullets_root.add_child(melon)
+
+
 func spawn_sun(pos: Vector2, value: int, kind: String, target_y := -1.0) -> void:
 	var sun_item := SunItem.new()
 	var sun_kind := SunItem.E_Kind.Sky if kind == "sky" else SunItem.E_Kind.Plant

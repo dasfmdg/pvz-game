@@ -201,8 +201,13 @@ func _build_ghost(plant_id: String) -> void:
 	var data := GameConfig.plant_data(plant_id)
 	if data.is_empty():
 		return
-	_ghost = SpriteLibrary.make_sprite({"main": String(data["sheet"])},
-			float(data["dw"]), float(data["dh"]))
+	var sheet := String(data["sheet"])
+	var draw_w := float(data["dw"])
+	var draw_h := float(data["dh"])
+	if SpriteLibrary.is_static_key(sheet):
+		_ghost = SpriteLibrary.make_static_anim_sprite(sheet, draw_w, draw_h)
+	else:
+		_ghost = SpriteLibrary.make_sprite({"main": sheet}, draw_w, draw_h)
 	_ghost.modulate.a = GHOST_ALPHA
 	_ghost.visible = false
 	add_child(_ghost)

@@ -18,5 +18,7 @@ static func create(plant_id: String) -> PlantBase:
 			return PlantSquash.new()
 		"chomper":
 			return PlantChomper.new()
+		"melonpult":
+			return PlantMelonPult.new()
 	push_warning("[PlantFactory] 未知植物 id：%s" % plant_id)
 	return null

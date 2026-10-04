@@ -304,7 +304,7 @@ func _test_seed_select(router: MainRouter) -> void:
 			router.state == MainRouter.E_State.LEVEL_SELECT \
 			and router.current_screen is LevelSelectScreen)
 
-	# 第 17 关：11 选 9，验证满槽拒绝与改选
+	# 第 17 关：12 选 9，验证满槽拒绝与改选
 	(router.current_screen as LevelSelectScreen).level_chosen.emit(16)
 	await get_tree().process_frame
 	_check("第 17 关进入选卡界面",
@@ -314,7 +314,10 @@ func _test_seed_select(router: MainRouter) -> void:
 	if seed17 == null:
 		return
 	_check("第 17 关槽位上限为 9", seed17.slot_limit == 9)
-	_check("第 17 关可选 11 张卡", seed17.available_plants.size() == 11)
+	_check("第 17 关可选 12 张卡", seed17.available_plants.size() == 12)
+	_check("第 17 关可选卡含西瓜投手", seed17.available_plants.has("melonpult"))
+	_check("西瓜投手卡片图已接线",
+			SpriteLibrary.card_texture("melonpult") != null)
 	_check("第 17 关默认预选 9 张", seed17.picked.size() == 9)
 	var spare_plant := ""
 	for plant_id in seed17.available_plants:
@@ -639,7 +642,7 @@ func _test_almanac() -> void:
 	var almanac := AlmanacScreen.new()
 	add_child(almanac)
 	await get_tree().process_frame
-	_check("植物卡 11 张", almanac.plant_cards.size() == 11)
+	_check("植物卡 12 张", almanac.plant_cards.size() == 12)
 	_check("僵尸卡 6 张", almanac.zombie_cards.size() == 6)
 	almanac.queue_free()
 	await get_tree().process_frame
