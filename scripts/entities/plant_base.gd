@@ -67,6 +67,7 @@ func _ready() -> void:
 		sprite = SpriteLibrary.make_static_anim_sprite(sheet, draw_size.x, draw_size.y)
 	else:
 		sprite = SpriteLibrary.make_sprite(_anim_sheets(), draw_size.x, draw_size.y, _once_anims())
+	sprite.speed_scale = GameConfig.PLANT_ANIM_SPEED_SCALE
 	add_child(sprite)
 	_on_planted()
 

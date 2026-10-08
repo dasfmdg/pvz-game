@@ -117,6 +117,12 @@ const PLANT_BEHAVIOR := {
 	},
 }
 
+## 植物动画播放倍率
+## SpriteFrames 默认动画帧率为 5 fps，而精灵表元数据（sprite_meta.gd）里的帧时长单位为「秒」，
+## 属「相对时长」，实际时长 = 相对时长 / (帧率 × speed_scale)。取 1/5 才能让实际时长回到元数据秒数，
+## 与参考实现 js/sprites-meta.js 的播放节奏一致。调大 = 更快，调小 = 更慢。
+const PLANT_ANIM_SPEED_SCALE := 0.2
+
 # ---------------- 僵尸 ----------------
 ## hp 总生命 / speed px每秒 / zw,zh 绘制尺寸
 ## hat 顶具独立生命段（打爆后换无顶具外观，可选减速）

@@ -208,6 +208,7 @@ func _build_ghost(plant_id: String) -> void:
 		_ghost = SpriteLibrary.make_static_anim_sprite(sheet, draw_w, draw_h)
 	else:
 		_ghost = SpriteLibrary.make_sprite({"main": sheet}, draw_w, draw_h)
+	_ghost.speed_scale = GameConfig.PLANT_ANIM_SPEED_SCALE
 	_ghost.modulate.a = GHOST_ALPHA
 	_ghost.visible = false
 	add_child(_ghost)
