@@ -180,7 +180,7 @@ func _check_all_spawned() -> void:
 
 
 func _spawn_zombie(zombie_id: String) -> void:
-	var zombie := ZombieBase.new()
+	var zombie := ZombieFactory.create(zombie_id)
 	zombie.setup(zombie_id, _next_lane(),
 			GameConfig.ZOMBIE_SPAWN_X + randf_range(0.0, 140.0), game)
 	zombies.append(zombie)

@@ -51,7 +51,7 @@ func setup(zombie_id_value: String, lane_value: int, spawn_x: float,
 
 func _ready() -> void:
 	z_index = lane
-	sprite = SpriteLibrary.make_sprite(_anim_sheets(), _draw_size.x, _draw_size.y, ["burnt"])
+	sprite = SpriteLibrary.make_sprite(_anim_sheets(), _draw_size.x, _draw_size.y, _once_anims())
 	add_child(sprite)
 	if bool(_data.get("has_flag", false)):
 		var flag := SpriteLibrary.make_static_sprite("flag",
@@ -73,6 +73,11 @@ func _anim_sheets() -> Dictionary:
 		sheets["bare_walk"] = String(_data["hat_removed_walk"])
 		sheets["bare_attack"] = String(_data["hat_removed_attack"])
 	return sheets
+
+
+## 只播放一次的动画名（子类有一次性过渡动画时重写）
+func _once_anims() -> Array:
+	return ["burnt"]
 
 
 func _process(delta: float) -> void:

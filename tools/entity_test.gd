@@ -1,11 +1,12 @@
 extends Node
 ## 临时校验脚本（非游戏代码）：实体层单元校验
-## 覆盖：6 种僵尸（顶具剥离 / 破损外观 / 减速 / 死亡 / 烧焦 / 无视顶具直杀）、
-##       12 种植物实例化与扣费铲除、食人花吞噬、倭瓜压扁、土豆雷武装引爆、
-##       樱桃 3×3、辣椒整行烧焦、寒冰减速、西瓜投手直伤与溅射、阳光收集飞行动画
+## 覆盖：7 种僵尸（顶具剥离 / 破损外观 / 减速 / 死亡 / 烧焦 / 无视顶具直杀）、
+##       13 种植物实例化与扣费铲除、食人花吞噬、倭瓜压扁、土豆雷武装引爆、
+##       樱桃 3×3、辣椒整行烧焦、寒冰减速、西瓜投手直伤与溅射、阳光收集飞行动画、
+##       撑杆僵尸翻越、读报僵尸撕报提速、甜菜穿透弹
 ## 用法：godot --headless --fixed-fps 60 --quit-after 2400 --path <proj> res://tools/entity_test.tscn
 
-const ZOMBIE_IDS: Array = ["basic", "cone", "bucket", "football", "door", "flag"]
+const ZOMBIE_IDS: Array = ["basic", "cone", "bucket", "football", "door", "flag", "pole"]
 
 const PLANT_CLASSES: Dictionary = {
 	"sunflower": "PlantSunflower",
@@ -20,6 +21,7 @@ const PLANT_CLASSES: Dictionary = {
 	"chomper": "PlantChomper",
 	"potato_mine": "PlantPotatoMine",
 	"melonpult": "PlantMelonPult",
+	"beetroot": "PlantBeetroot",
 }
 
 var game: MainGameManager = null
@@ -57,7 +59,8 @@ func _ready() -> void:
 		{"t": 28.0, "cb": _stage_snowpea_check},
 		{"t": 29.0, "cb": _stage_sun_fly_start},
 		{"t": 29.8, "cb": _stage_sun_fly_check},
-		{"t": 30.2, "cb": _stage_final},
+		{"t": 30.5, "cb": _stage_new_entities},
+		{"t": 31.2, "cb": _stage_final},
 	]
 	print("[TEST] 实体层校验开始（波次已隔离）")
 
@@ -89,7 +92,7 @@ func _class_of(node: Node) -> String:
 
 
 func _spawn(zombie_id: String, lane: int, x: float) -> ZombieBase:
-	var zombie := ZombieBase.new()
+	var zombie := ZombieFactory.create(zombie_id)
 	zombie.setup(zombie_id, lane, x, game)
 	game.wave_manager.zombies.append(zombie)
 	game.zombies_root.add_child(zombie)
@@ -189,6 +192,7 @@ func _stage_plant_matrix() -> void:
 		cells.append(Vector2i(7, row))
 	cells.append(Vector2i(6, 0))
 	cells.append(Vector2i(6, 1))
+	cells.append(Vector2i(6, 2))
 	var index := 0
 	for raw_id in GameConfig.PLANT_ORDER:
 		var plant_id := String(raw_id)
@@ -373,6 +377,77 @@ func _stage_sun_fly_check() -> void:
 	var expected: int = int(_refs["sun_fly_before"]) + int(_refs["sun_fly_value"])
 	_check("飞抵计数框后阳光入账", game.sun == expected)
 	_check("飞抵计数框后阳光节点销毁", raw == null or not is_instance_valid(raw))
+
+
+# ---------------- 新增植物 / 僵尸 ----------------
+func _stage_new_entities() -> void:
+	print("[TEST] --- 新增植物 / 僵尸 ---")
+	_stage_beetroot()
+	_stage_pole_vault()
+	_stage_newspaper_rip()
+
+
+## 甜菜：沿本行发射穿透弹，命中后弹体继续前进
+func _stage_beetroot() -> void:
+	var beet_cell := Vector2i(1, 3)
+	game.grid_manager.place_plant("beetroot", beet_cell)
+	var beet: PlantBase = game.grid_manager.plant_at(beet_cell)
+	_check("甜菜实体类=PlantBeetroot", _class_of(beet) == "PlantBeetroot")
+	if beet == null:
+		return
+	var beet_x := GameConfig.cell_center(beet_cell).x
+	var front := _spawn("basic", 3, beet_x + 220.0)
+	var rear := _spawn("basic", 3, beet_x + 420.0)
+	var front_hp := front.hp
+	var rear_hp := rear.hp
+	beet._tick(10.0)
+	var bullet: BeetBullet = null
+	for node in game.bullets_root.get_children():
+		if node is BeetBullet:
+			bullet = node as BeetBullet
+	_check("甜菜开火生成穿透弹", bullet != null)
+	if bullet != null:
+		for _i in 80:
+			bullet._process(0.05)
+		_check("甜菜弹命中前排僵尸", front.hp < front_hp)
+		_check("甜菜弹穿透后排僵尸", rear.hp < rear_hp)
+		_check("甜菜弹穿透后仍在飞行", is_instance_valid(bullet))
+		if is_instance_valid(bullet):
+			bullet.free()
+	_despawn(front)
+	_despawn(rear)
+
+
+## 撑杆僵尸：前方出现植物即起跳，落点恰好前移一格
+func _stage_pole_vault() -> void:
+	var wall_cell := Vector2i(4, 1)
+	game.grid_manager.place_plant("wallnut", wall_cell)
+	var wall_x := GameConfig.cell_center(wall_cell).x
+	var pole := ZombiePole.new()
+	pole.setup("pole", 1, wall_x + 100.0, game)
+	game.zombies_root.add_child(pole)
+	pole._tick_walk(0.016)
+	_check("撑杆僵尸遇植物起跳", pole._vaulted and pole._jumping)
+	var from_x := pole.position.x
+	pole._tick_jump(GameConfig.POLE_VAULT_TIME)
+	_check("撑杆僵尸翻越一格（%.0f→%.0f）" % [from_x, pole.position.x],
+			not pole._jumping
+			and is_equal_approx(pole.position.x, from_x - GameConfig.POLE_VAULT_DISTANCE))
+	pole.free()
+
+
+## 读报僵尸：报纸被撕后僵直播放撕裂动画，播完换无报纸外观并提速
+func _stage_newspaper_rip() -> void:
+	var paper := ZombieNewspaper.new()
+	paper.setup("newspaper", 0, 1500.0, game)
+	game.zombies_root.add_child(paper)
+	var walk_speed := paper.current_speed()
+	paper.take_damage(paper.hat_hp)
+	_check("读报僵尸报纸被撕后进入僵直", paper._ripping and paper._current_anim() == "rip")
+	paper._on_rip_finished()
+	_check("读报僵尸撕报结束后提速（%.0f→%.0f）" % [walk_speed, paper.current_speed()],
+			not paper._ripping and not paper.has_hat and paper.current_speed() > walk_speed)
+	paper.free()
 
 
 func _stage_final() -> void:

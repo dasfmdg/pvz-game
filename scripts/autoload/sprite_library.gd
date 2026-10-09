@@ -10,6 +10,7 @@ const STATIC_TEXTURES := {
 	"shovel": "res://assets/shovel.png",
 	"flag": "res://assets/flag.png",
 	"melon": "res://assets/melon.png",
+	"beetbullet": "res://assets/beetbullet.png",
 }
 
 ## 卡片图（植物 id → 图片）
@@ -26,6 +27,7 @@ const CARD_TEXTURES := {
 	"squash": "res://assets/card_squash.png",
 	"chomper": "res://assets/card_chomper.png",
 	"melonpult": "res://assets/card_melonpult.png",
+	"beetroot": "res://assets/card_beetroot.png",
 }
 
 ## 卡片图切分区域：素材为多帧拼图时只取其中一帧

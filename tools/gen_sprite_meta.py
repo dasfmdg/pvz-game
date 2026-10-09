@@ -14,6 +14,30 @@ import sys
 DEFAULT_SRC = os.path.join("..", "pvzcode", "js", "sprites-meta.js")
 DEFAULT_OUT = os.path.join("scripts", "data", "sprite_meta.gd")
 
+## 本地追加精灵表：来源 tools/build_sheets.py 生成，参考工程 sprites-meta.js 中没有。
+## 元组含义：(名称, 帧宽, 帧高, 帧数, 单帧时长秒, assets 下相对路径)
+## 名称与 sprites-meta.js 冲突时以本表为准（参考工程若后续补齐同名表，这里会覆盖）。
+EXTRA_SHEETS = [
+    ## 撑杆僵尸：统一画布 300x176，脚底基线 y=170，绘制尺寸与原始像素 1:1
+    ("z_pole_walk", 300, 176, 10, 0.18, "sprites/z_pole_walk.png"),
+    ("z_pole_attack", 300, 176, 14, 0.09, "sprites/z_pole_attack.png"),
+    ("z_pole_jump", 300, 176, 10, 0.05, "sprites/z_pole_jump.png"),
+    ("z_pole_after_jump", 300, 176, 26, 0.18, "sprites/z_pole_after_jump.png"),
+    ("z_pole_losthead", 300, 176, 10, 0.07, "sprites/z_pole_losthead.png"),
+    ## 报纸僵尸：统一画布 120x164（原始 216x164 裁掉两侧留白，白底已键控）
+    ("z_newspaper_walk", 120, 164, 19, 0.18, "sprites/z_newspaper_walk.png"),
+    ("z_newspaper_attack", 120, 164, 8, 0.09, "sprites/z_newspaper_attack.png"),
+    ("z_newspaper_rip", 120, 164, 15, 0.06, "sprites/z_newspaper_rip.png"),
+    ("z_newspaper_nopaper_walk", 120, 164, 14, 0.18,
+     "sprites/z_newspaper_nopaper_walk.png"),
+    ("z_newspaper_nopaper_attack", 120, 164, 7, 0.09,
+     "sprites/z_newspaper_nopaper_attack.png"),
+    ("z_newspaper_losthead", 120, 164, 16, 0.07, "sprites/z_newspaper_losthead.png"),
+    ## 甜菜：待机 2 帧 / 枯萎 3 帧
+    ("beetroot", 55, 75, 2, 0.3, "sprites/beetroot.png"),
+    ("beetroot_dying", 55, 75, 3, 0.15, "sprites/beetroot_dying.png"),
+]
+
 
 def split_top_level(text):
     """按顶层逗号切分参数，忽略括号与中括号内部的逗号。"""
@@ -119,6 +143,24 @@ def parse_meta(js_text, assets_dir):
     return entries
 
 
+def merge_extra(entries):
+    """把 EXTRA_SHEETS（tools/build_sheets.py 产物）并入元数据表。"""
+    merged = [(name, w, h, frames, delays, src) for name, w, h, frames, delays, src in entries]
+    for name, w, h, frames, delay_second, src in EXTRA_SHEETS:
+        delays = [int(round(delay_second * 1000))] * frames
+        merged.append((name, w, h, frames, delays, src))
+    ## 追加表排在被覆盖表之后，emit 时按名称去重保留最后一条
+    result = []
+    seen = set()
+    for entry in reversed(merged):
+        if entry[0] in seen:
+            continue
+        seen.add(entry[0])
+        result.append(entry)
+    result.reverse()
+    return result
+
+
 def uniform_delay(delays):
     first = delays[0]
     for value in delays:
@@ -190,6 +232,7 @@ def main():
     with open(src, "r", encoding="utf-8") as handle:
         js_text = handle.read()
     entries = parse_meta(js_text, assets_dir)
+    entries = merge_extra(entries)
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     with open(out, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(emit_gd(entries))

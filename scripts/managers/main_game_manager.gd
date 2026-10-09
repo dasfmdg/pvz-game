@@ -226,6 +226,13 @@ func spawn_melon(lane: int, pos: Vector2, damage: int, splash_damage: int, slows
 	bullets_root.add_child(melon)
 
 
+## 甜菜弹道：穿透整行，可依次命中同一行的多个僵尸
+func spawn_beet_bullet(lane: int, pos_x: float, pos_y: float, damage: int) -> void:
+	var beet := BeetBullet.new()
+	beet.setup(lane, Vector2(pos_x, pos_y), damage, self)
+	bullets_root.add_child(beet)
+
+
 func spawn_sun(pos: Vector2, value: int, kind: String, target_y := -1.0) -> void:
 	var sun_item := SunItem.new()
 	var sun_kind := SunItem.E_Kind.Sky if kind == "sky" else SunItem.E_Kind.Plant

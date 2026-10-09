@@ -75,7 +75,7 @@ func _test_router() -> void:
 			router.state == MainRouter.E_State.LEVEL_SELECT \
 			and router.current_screen is LevelSelectScreen)
 	var select := router.current_screen as LevelSelectScreen
-	_check("关卡选择含 30 个按钮",
+	_check("关卡选择含全部关卡按钮",
 			select != null and select.level_buttons.size() == GameConfig.LEVELS.size())
 	var lock_consistent := true
 	if select != null:
@@ -84,25 +84,28 @@ func _test_router() -> void:
 				lock_consistent = false
 	_check("锁定态与存档一致", lock_consistent)
 
-	# 30 关卡片应为 5 列 × 6 行网格，整体不超出画布，且纵向需要滚动
+	# 关卡卡片应为 5 列网格，整体不超出画布，且纵向需要滚动（行数随关卡总数变化）
 	var col_step := LevelSelectScreen.CARD_W + LevelSelectScreen.CARD_GAP
 	var row_step := LevelSelectScreen.CARD_H + LevelSelectScreen.CARD_GAP
 	var grid_ok := select != null and select.level_buttons.size() == GameConfig.LEVELS.size()
 	if grid_ok:
+		var total := GameConfig.LEVELS.size()
+		var last_row := int(ceil(float(total) / float(LevelSelectScreen.COLUMNS))) - 1
+		var last_col := (total - 1) % LevelSelectScreen.COLUMNS
 		var first: Button = select.level_buttons[0]
 		var fifth: Button = select.level_buttons[4]
 		var sixth: Button = select.level_buttons[5]
-		var last: Button = select.level_buttons[29]
+		var last: Button = select.level_buttons[total - 1]
 		grid_ok = is_equal_approx(first.size.x, LevelSelectScreen.CARD_W) \
 			and is_equal_approx(fifth.global_position.x - first.global_position.x, 4.0 * col_step) \
 			and is_equal_approx(sixth.global_position.y - first.global_position.y, row_step) \
-			and is_equal_approx(last.global_position.x - first.global_position.x, 4.0 * col_step) \
-			and is_equal_approx(last.global_position.y - first.global_position.y, 5.0 * row_step)
-	_check("30 关卡片按 5 列 × 6 行排布", grid_ok)
+			and is_equal_approx(last.global_position.x - first.global_position.x, float(last_col) * col_step) \
+			and is_equal_approx(last.global_position.y - first.global_position.y, float(last_row) * row_step)
+	_check("关卡卡片按 5 列网格排布", grid_ok)
 
 	var scrollable := select != null and select.level_buttons.size() == GameConfig.LEVELS.size()
 	if scrollable:
-		var last_card_bottom: float = select.level_buttons[29].global_position.y \
+		var last_card_bottom: float = select.level_buttons.back().global_position.y \
 			+ LevelSelectScreen.CARD_H
 		var view_bottom := GameConfig.CANVAS_H - LevelSelectScreen.GRID_BOTTOM_MARGIN
 		scrollable = last_card_bottom > view_bottom
@@ -550,7 +553,7 @@ func _dict_of(source: Dictionary, key: String) -> Dictionary:
 # ---------------- 关卡数据 ----------------
 func _test_levels() -> void:
 	print("[TEST] --- 关卡数据 ---")
-	_check("关卡数量为 30", GameConfig.LEVELS.size() == 30)
+	_check("关卡数量为 40", GameConfig.LEVELS.size() == 40)
 	var night_count := 0
 	for i in GameConfig.LEVELS.size():
 		var level: Dictionary = GameConfig.LEVELS[i]
@@ -566,7 +569,7 @@ func _test_levels() -> void:
 			night_count += 1
 	_check("第 1 关波次引用全局 WAVES",
 			(GameConfig.LEVELS[0]["waves"] as Array).size() == GameConfig.WAVES.size())
-	_check("夜间关卡共 6 关", night_count == 6)
+	_check("夜间关卡共 10 关", night_count == 10)
 	_check("第 16 关为夜间场景", GameConfig.level_is_night(15))
 	_check("第 30 关为夜间场景", GameConfig.level_is_night(29))
 	_check("第 1 关为白天场景", not GameConfig.level_is_night(0))
@@ -578,7 +581,7 @@ func _test_levels() -> void:
 	_check("第 6 关仍未解锁双发射手", not GameConfig.plants_for_level(6).has("repeater"))
 	_check("第 11 关解锁寒冰射手", GameConfig.plants_for_level(11).has("snowpea"))
 	_check("第 10 关仍未解锁寒冰射手", not GameConfig.plants_for_level(10).has("snowpea"))
-	_check("第 30 关解锁全部 11 种植物",
+	_check("第 30 关解锁全部植物",
 			GameConfig.plants_for_level(30).size() == GameConfig.PLANT_ORDER.size())
 
 	# ---------------- 选卡界面数据 ----------------
@@ -596,7 +599,7 @@ func _test_levels() -> void:
 		if slot < last_slot or slot < 1 or slot > GameConfig.SEED_SLOT_MAX:
 			slots_valid = false
 		last_slot = slot
-	_check("30 关槽位合法且单调不减", slots_valid)
+	_check("全部关卡槽位合法且单调不减", slots_valid)
 
 	_check("第 1 关不经选卡", not GameConfig.level_needs_seed_select(0))
 	_check("第 6 关不经选卡", not GameConfig.level_needs_seed_select(5))
@@ -617,7 +620,7 @@ func _test_levels() -> void:
 		for zombie_id in kinds:
 			if zombie_id == "flag" or not GameConfig.ZOMBIES.has(zombie_id):
 				kinds_valid = false
-	_check("30 关僵尸种类合法且不含旗帜", kinds_valid)
+	_check("全部关卡僵尸种类合法且不含旗帜", kinds_valid)
 	_check("默认不计入大波追加的旗帜僵尸",
 			not GameConfig.zombies_for_level(0).has("flag"))
 	_check("include_flag 打开时计入旗帜僵尸",
@@ -642,8 +645,8 @@ func _test_almanac() -> void:
 	var almanac := AlmanacScreen.new()
 	add_child(almanac)
 	await get_tree().process_frame
-	_check("植物卡 12 张", almanac.plant_cards.size() == 12)
-	_check("僵尸卡 6 张", almanac.zombie_cards.size() == 6)
+	_check("植物卡 13 张", almanac.plant_cards.size() == 13)
+	_check("僵尸卡 8 张", almanac.zombie_cards.size() == 8)
 	almanac.queue_free()
 	await get_tree().process_frame
 

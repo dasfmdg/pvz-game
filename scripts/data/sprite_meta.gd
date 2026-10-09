@@ -37,6 +37,19 @@ const SHEETS := {
 	"z_door_attack": {"w": 166, "h": 157, "frames": 12, "d": 0.09, "src": "res://assets/sprites/z_door_attack.png"},
 	"z_losthead_walk": {"w": 166, "h": 144, "frames": 18, "d": 0.07, "src": "res://assets/sprites/z_losthead_walk.png"},
 	"z_losthead_attack": {"w": 166, "h": 144, "frames": 11, "d": 0.07, "src": "res://assets/sprites/z_losthead_attack.png"},
+	"z_pole_walk": {"w": 300, "h": 176, "frames": 10, "d": 0.18, "src": "res://assets/sprites/z_pole_walk.png"},
+	"z_pole_attack": {"w": 300, "h": 176, "frames": 14, "d": 0.09, "src": "res://assets/sprites/z_pole_attack.png"},
+	"z_pole_jump": {"w": 300, "h": 176, "frames": 10, "d": 0.05, "src": "res://assets/sprites/z_pole_jump.png"},
+	"z_pole_after_jump": {"w": 300, "h": 176, "frames": 26, "d": 0.18, "src": "res://assets/sprites/z_pole_after_jump.png"},
+	"z_pole_losthead": {"w": 300, "h": 176, "frames": 10, "d": 0.07, "src": "res://assets/sprites/z_pole_losthead.png"},
+	"z_newspaper_walk": {"w": 120, "h": 164, "frames": 19, "d": 0.18, "src": "res://assets/sprites/z_newspaper_walk.png"},
+	"z_newspaper_attack": {"w": 120, "h": 164, "frames": 8, "d": 0.09, "src": "res://assets/sprites/z_newspaper_attack.png"},
+	"z_newspaper_rip": {"w": 120, "h": 164, "frames": 15, "d": 0.12, "src": "res://assets/sprites/z_newspaper_rip.png"},
+	"z_newspaper_nopaper_walk": {"w": 120, "h": 164, "frames": 14, "d": 0.18, "src": "res://assets/sprites/z_newspaper_nopaper_walk.png"},
+	"z_newspaper_nopaper_attack": {"w": 120, "h": 164, "frames": 7, "d": 0.09, "src": "res://assets/sprites/z_newspaper_nopaper_attack.png"},
+	"z_newspaper_losthead": {"w": 120, "h": 164, "frames": 16, "d": 0.07, "src": "res://assets/sprites/z_newspaper_losthead.png"},
+	"beetroot": {"w": 55, "h": 75, "frames": 2, "d": 0.3, "src": "res://assets/sprites/beetroot.png"},
+	"beetroot_dying": {"w": 55, "h": 75, "frames": 3, "d": 0.15, "src": "res://assets/sprites/beetroot_dying.png"},
 }
 
 

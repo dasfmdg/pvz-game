@@ -1,6 +1,6 @@
 class_name LevelSelectScreen
 extends Control
-## 关卡选择：30 关滚动网格（1~5 关有立绘，其余关卡降级为编号底板）
+## 关卡选择：全部关卡滚动网格（1~5 关有立绘，其余关卡降级为编号底板）
 
 signal level_chosen(index: int)
 signal back_pressed()

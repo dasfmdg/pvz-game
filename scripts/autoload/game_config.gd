@@ -82,12 +82,17 @@ const PLANTS := {
 		"name": "Melon-pult", "cost": 300, "hp": 300, "recharge": 8.0,
 		"sheet": "melon", "dw": 104.0, "dh": 131.0,
 	},
+	"beetroot": {
+		"name": "Beetroot", "cost": 125, "hp": 300, "recharge": 7.5,
+		"sheet": "beetroot", "dw": 100.0, "dh": 136.0,
+	},
 }
 
 ## 卡槽顺序
 const PLANT_ORDER: Array[String] = [
 	"sunflower", "peashooter", "wallnut", "cherrybomb", "repeater", "jalapeno",
 	"snowpea", "threepeater", "squash", "chomper", "potato_mine", "melonpult",
+	"beetroot",
 ]
 
 ## 植物解锁关卡（1 基，语义与参考实现 js/game.js isPlantAvailable 一致：unlockLevel <= 关卡序号）
@@ -95,7 +100,7 @@ const PLANT_ORDER: Array[String] = [
 const PLANT_UNLOCK := {
 	"sunflower": 0, "peashooter": 0, "wallnut": 3, "potato_mine": 4, "cherrybomb": 5,
 	"repeater": 7, "jalapeno": 9, "snowpea": 11, "squash": 13, "chomper": 15,
-	"threepeater": 17, "melonpult": 17,
+	"threepeater": 17, "melonpult": 17, "beetroot": 21,
 }
 
 ## 植物行为参数
@@ -115,6 +120,8 @@ const PLANT_BEHAVIOR := {
 		"fire_interval": 3.0, "first_fire": 0.8,
 		"damage": 80, "splash_damage": 40, "slow": true,
 	},
+	## 甜菜：发射可穿透整行的甜菜弹，同一僵尸只会被同一发命中一次
+	"beetroot": {"fire_interval": 2.0, "first_fire": 0.8, "damage": 45, "muzzle_offset": 34.0},
 }
 
 ## 植物动画播放倍率
@@ -172,7 +179,32 @@ const ZOMBIES := {
 		"dirty_walk": "z_losthead_walk", "dirty_attack": "z_losthead_attack",
 		"dirt_ratio": 0.5, "has_flag": true,
 	},
+	## 撑杆僵尸：碰到第一株植物时翻越一格，落地后换「跳后行走」外观
+	## 统一画布 300x176，脚底基线 y=170，故 zw/zh 与单帧尺寸 1:1
+	"pole": {
+		"name": "Pole Vaulting", "hp": 340, "speed": 30.0, "zw": 300.0, "zh": 176.0,
+		"walk": "z_pole_walk", "attack": "z_pole_attack",
+		"jump": "z_pole_jump", "after_jump_walk": "z_pole_after_jump",
+		"dirty_walk": "z_pole_losthead", "dirty_attack": "z_pole_losthead",
+		"dirt_ratio": 0.5,
+	},
+	## 读报僵尸：报纸是被撕掉的独立护甲段，撕碎后短暂僵直并提速
+	"newspaper": {
+		"name": "Newspaper", "hp": 200, "speed": 26.0, "zw": 120.0, "zh": 164.0,
+		"walk": "z_newspaper_walk", "attack": "z_newspaper_attack",
+		"hat_hp": 180, "hat_ratio": 0.47, "hat_removed_speed": 44.0,
+		"hat_removed_walk": "z_newspaper_nopaper_walk",
+		"hat_removed_attack": "z_newspaper_nopaper_attack",
+		"rip": "z_newspaper_rip",
+		"dirty_walk": "z_newspaper_losthead", "dirty_attack": "z_newspaper_losthead",
+		"dirt_ratio": 0.25,
+	},
 }
+
+## 撑杆僵尸翻越：触发距离（嘴部前方多远出现植物即起跳）/ 单次翻越距离 / 翻越时长(秒)
+const POLE_VAULT_TRIGGER_X := 96.0
+const POLE_VAULT_DISTANCE := 145.0
+const POLE_VAULT_TIME := 0.5
 
 ## 啃食参数
 const ZOMBIE_BITE_INTERVAL := 0.5
@@ -204,8 +236,10 @@ const WAVE_EARLY_MIN := 3.0
 const WAVE_EARLY_MAX := 7.0
 
 # ---------------- 关卡 ----------------
-## 30 关数据与 ../pvzcode/js/levels-data.js 逐关逐波对齐
-## id 关卡序号(0 基) / name 显示名 / start_sun 初始阳光 / difficulty 难度(1~8)
+## 前 30 关数据与 ../pvzcode/js/levels-data.js 逐关逐波对齐（参考实现共 30 关）
+## 第 31~40 关为在此基础上的「后日谈」扩展：沿用同一波次结构与全部既有僵尸，
+## 仅提升密度与节奏，不引入新素材，作为全通关后的追加挑战。
+## id 关卡序号(0 基) / name 显示名 / start_sun 初始阳光 / difficulty 难度(1~10)
 ## waves 波次表（结构同 WAVES）/ scene 场景（缺省 "day"）
 ## 可用植物不逐关硬编码，由 PLANT_UNLOCK + plants_for_level(关卡序号) 生成
 ## 第 1 关直接引用 WAVES，保证既有回归（entity_test / headless_sim）行为可复用
@@ -564,6 +598,139 @@ const LEVELS := [
 			{"t": 220.0, "z": ["bucket", "door", "football", "bucket", "door", "football", "cone", "basic", "bucket", "door", "football", "cone"], "huge": true},
 		],
 	},
+
+	# ---- 第 31~40 关：全通关追加挑战（第31关引入读报僵尸，第32关引入撑杆僵尸）----
+	{
+		"id": 30, "name": "第31关 · 铁桶狂潮", "start_sun": 75, "difficulty": 8,
+		"waves": [
+			{"t": 9.0, "z": ["bucket", "cone", "door"]},
+			{"t": 26.0, "z": ["door", "bucket", "newspaper", "football", "cone", "bucket"]},
+			{"t": 48.0, "z": ["bucket", "door", "bucket", "football", "cone", "basic"]},
+			{"t": 72.0, "z": ["door", "bucket", "football", "newspaper", "bucket", "door", "cone", "bucket"], "huge": true},
+			{"t": 100.0, "z": ["bucket", "door", "football", "bucket", "newspaper", "door", "cone"]},
+			{"t": 128.0, "z": ["cone", "bucket", "football", "newspaper", "door", "bucket", "door", "bucket"], "huge": true},
+			{"t": 158.0, "z": ["bucket", "door", "football", "newspaper", "bucket", "door", "football", "cone", "basic", "bucket"], "huge": true},
+			{"t": 190.0, "z": ["door", "bucket", "football", "newspaper", "bucket", "door", "football", "cone", "basic", "bucket", "door"], "huge": true},
+		],
+	},
+	{
+		"id": 31, "name": "第32关 · 橄榄球攻势", "start_sun": 50, "difficulty": 8,
+		"waves": [
+			{"t": 9.0, "z": ["football", "basic", "cone"]},
+			{"t": 26.0, "z": ["football", "door", "football", "bucket"]},
+			{"t": 48.0, "z": ["football", "pole", "cone", "football", "door", "basic"]},
+			{"t": 72.0, "z": ["football", "bucket", "door", "pole", "football", "cone", "basic", "football"], "huge": true},
+			{"t": 100.0, "z": ["football", "pole", "cone", "football", "door", "bucket", "football"]},
+			{"t": 128.0, "z": ["door", "football", "pole", "bucket", "football", "cone", "door", "football"], "huge": true},
+			{"t": 158.0, "z": ["football", "bucket", "pole", "football", "door", "football", "cone", "basic", "football", "door"], "huge": true},
+			{"t": 190.0, "z": ["bucket", "football", "pole", "door", "football", "bucket", "football", "cone", "basic", "door", "football"], "huge": true},
+		],
+	},
+	{
+		"id": 32, "name": "第33关 · 铁门围攻", "scene": "night", "start_sun": 50, "difficulty": 8,
+		"waves": [
+			{"t": 9.0, "z": ["door", "cone", "bucket"]},
+			{"t": 26.0, "z": ["door", "newspaper", "football", "door", "bucket", "basic"]},
+			{"t": 48.0, "z": ["door", "pole", "bucket", "door", "football", "cone", "door"]},
+			{"t": 72.0, "z": ["door", "pole", "football", "newspaper", "bucket", "door", "cone", "basic", "door"], "huge": true},
+			{"t": 100.0, "z": ["bucket", "door", "newspaper", "football", "door", "pole", "bucket", "door", "cone"]},
+			{"t": 128.0, "z": ["door", "pole", "football", "door", "cone", "newspaper", "bucket", "door", "football"], "huge": true},
+			{"t": 158.0, "z": ["door", "pole", "bucket", "football", "door", "newspaper", "football", "cone", "basic", "door", "bucket"], "huge": true},
+			{"t": 190.0, "z": ["football", "door", "pole", "bucket", "door", "football", "newspaper", "door", "cone", "basic", "bucket", "door"], "huge": true},
+		],
+	},
+	{
+		"id": 33, "name": "第34关 · 僵尸狂潮", "start_sun": 50, "difficulty": 8,
+		"waves": [
+			{"t": 8.0, "z": ["basic", "cone", "bucket", "door", "football"]},
+			{"t": 24.0, "z": ["door", "football", "newspaper", "bucket", "cone", "basic", "door"]},
+			{"t": 46.0, "z": ["cone", "pole", "bucket", "door", "football", "door", "basic", "bucket"]},
+			{"t": 70.0, "z": ["football", "bucket", "door", "pole", "cone", "basic", "bucket", "door", "football"], "huge": true},
+			{"t": 98.0, "z": ["bucket", "door", "newspaper", "football", "bucket", "door", "cone", "football", "basic"]},
+			{"t": 126.0, "z": ["door", "pole", "football", "bucket", "cone", "door", "newspaper", "bucket", "door", "football"], "huge": true},
+			{"t": 156.0, "z": ["bucket", "door", "football", "newspaper", "bucket", "pole", "door", "football", "cone", "basic", "bucket", "door"], "huge": true},
+			{"t": 188.0, "z": ["football", "door", "pole", "bucket", "newspaper", "door", "football", "bucket", "cone", "basic", "bucket", "door", "football"], "huge": true},
+		],
+	},
+	{
+		"id": 34, "name": "第35关 · 午夜围攻", "scene": "night", "start_sun": 50, "difficulty": 9,
+		"waves": [
+			{"t": 8.0, "z": ["door", "football", "bucket", "cone", "basic"]},
+			{"t": 24.0, "z": ["bucket", "pole", "football", "newspaper", "door", "cone", "bucket", "football"]},
+			{"t": 46.0, "z": ["football", "bucket", "newspaper", "door", "football", "pole", "cone", "basic", "bucket"]},
+			{"t": 70.0, "z": ["bucket", "door", "football", "pole", "cone", "newspaper", "basic", "bucket", "door", "football"], "huge": true},
+			{"t": 98.0, "z": ["door", "pole", "bucket", "football", "newspaper", "bucket", "door", "cone", "football", "bucket"]},
+			{"t": 126.0, "z": ["football", "door", "pole", "bucket", "cone", "newspaper", "door", "bucket", "door", "football"], "huge": true},
+			{"t": 156.0, "z": ["bucket", "pole", "door", "football", "newspaper", "bucket", "door", "football", "cone", "basic", "bucket", "door"], "huge": true},
+			{"t": 188.0, "z": ["football", "door", "pole", "bucket", "newspaper", "door", "football", "bucket", "cone", "basic", "bucket", "door", "football", "pole"], "huge": true},
+		],
+	},
+	{
+		"id": 35, "name": "第36关 · 路障狂潮", "start_sun": 100, "difficulty": 9,
+		"waves": [
+			{"t": 8.0, "z": ["cone", "basic", "cone", "bucket"]},
+			{"t": 24.0, "z": ["cone", "newspaper", "door", "cone", "football", "bucket", "basic"]},
+			{"t": 46.0, "z": ["cone", "pole", "bucket", "cone", "door", "football", "cone", "basic"]},
+			{"t": 70.0, "z": ["basic", "cone", "newspaper", "bucket", "door", "cone", "football", "pole", "cone", "basic", "door"], "huge": true},
+			{"t": 98.0, "z": ["cone", "pole", "football", "cone", "bucket", "door", "newspaper", "cone", "football"]},
+			{"t": 126.0, "z": ["cone", "door", "pole", "football", "bucket", "cone", "basic", "newspaper", "cone", "bucket", "door"], "huge": true},
+			{"t": 156.0, "z": ["basic", "cone", "pole", "bucket", "door", "newspaper", "football", "cone", "basic", "cone", "bucket", "door", "football"], "huge": true},
+			{"t": 188.0, "z": ["cone", "bucket", "pole", "door", "football", "newspaper", "cone", "basic", "bucket", "door", "cone", "football", "pole", "cone"], "huge": true},
+		],
+	},
+	{
+		"id": 36, "name": "第37关 · 混合攻势", "start_sun": 75, "difficulty": 9,
+		"waves": [
+			{"t": 8.0, "z": ["basic", "cone", "bucket", "door", "football"]},
+			{"t": 24.0, "z": ["door", "newspaper", "bucket", "cone", "basic", "pole"]},
+			{"t": 46.0, "z": ["cone", "pole", "door", "football", "door", "basic", "bucket", "door"]},
+			{"t": 70.0, "z": ["football", "bucket", "door", "pole", "basic", "bucket", "door", "football", "cone"], "huge": true},
+			{"t": 98.0, "z": ["bucket", "door", "football", "newspaper", "door", "cone", "football", "basic", "bucket"]},
+			{"t": 126.0, "z": ["door", "pole", "football", "bucket", "cone", "door", "newspaper", "football", "basic"], "huge": true},
+			{"t": 156.0, "z": ["bucket", "door", "football", "newspaper", "bucket", "pole", "football", "cone", "basic", "bucket", "door"], "huge": true},
+			{"t": 188.0, "z": ["football", "door", "pole", "bucket", "door", "cone", "newspaper", "cone", "basic", "bucket", "door", "football"], "huge": true},
+		],
+	},
+	{
+		"id": 37, "name": "第38关 · 黑夜洪峰", "scene": "night", "start_sun": 50, "difficulty": 9,
+		"waves": [
+			{"t": 8.0, "z": ["door", "bucket", "football", "cone", "basic", "door", "newspaper"]},
+			{"t": 24.0, "z": ["bucket", "football", "pole", "door", "cone", "newspaper", "door", "bucket", "football", "basic"]},
+			{"t": 46.0, "z": ["football", "bucket", "newspaper", "door", "football", "pole", "cone", "basic", "bucket", "door"]},
+			{"t": 70.0, "z": ["bucket", "door", "pole", "football", "cone", "newspaper", "basic", "bucket", "door", "football", "bucket"], "huge": true},
+			{"t": 98.0, "z": ["door", "pole", "bucket", "football", "newspaper", "bucket", "door", "cone", "football", "bucket", "basic"]},
+			{"t": 126.0, "z": ["football", "pole", "door", "bucket", "cone", "newspaper", "door", "bucket", "door", "football", "basic", "bucket"], "huge": true},
+			{"t": 156.0, "z": ["bucket", "pole", "door", "football", "newspaper", "bucket", "door", "football", "cone", "basic", "bucket", "door", "football", "pole"], "huge": true},
+			{"t": 188.0, "z": ["football", "door", "pole", "bucket", "newspaper", "door", "football", "bucket", "cone", "basic", "bucket", "door", "football", "pole", "newspaper"], "huge": true},
+		],
+	},
+	{
+		"id": 38, "name": "第39关 · 终极之夜", "start_sun": 100, "difficulty": 10,
+		"waves": [
+			{"t": 8.0, "z": ["basic", "cone", "bucket", "door", "football", "bucket", "pole"]},
+			{"t": 24.0, "z": ["door", "newspaper", "football", "bucket", "pole", "cone", "basic", "bucket", "door"]},
+			{"t": 46.0, "z": ["cone", "pole", "bucket", "door", "football", "newspaper", "door", "basic", "bucket", "door", "football"]},
+			{"t": 70.0, "z": ["football", "bucket", "pole", "door", "cone", "newspaper", "basic", "bucket", "door", "football", "cone", "bucket"], "huge": true},
+			{"t": 98.0, "z": ["bucket", "pole", "door", "football", "newspaper", "bucket", "door", "cone", "football", "basic", "bucket", "door"]},
+			{"t": 126.0, "z": ["door", "pole", "football", "bucket", "cone", "newspaper", "door", "bucket", "door", "football", "basic", "bucket", "newspaper"], "huge": true},
+			{"t": 156.0, "z": ["bucket", "pole", "door", "football", "newspaper", "bucket", "door", "football", "cone", "basic", "bucket", "door", "football", "pole"], "huge": true},
+			{"t": 188.0, "z": ["football", "door", "pole", "bucket", "newspaper", "door", "football", "bucket", "cone", "basic", "bucket", "door", "football", "pole", "newspaper", "bucket"], "huge": true},
+		],
+	},
+	{
+		"id": 39, "name": "第40关 · 最终防线", "scene": "night", "start_sun": 100, "difficulty": 10,
+		"waves": [
+			{"t": 8.0, "z": ["door", "bucket", "football", "pole", "basic", "door", "newspaper"]},
+			{"t": 24.0, "z": ["bucket", "newspaper", "football", "door", "pole", "door", "bucket", "football", "basic"]},
+			{"t": 46.0, "z": ["football", "bucket", "pole", "door", "football", "newspaper", "basic", "bucket", "door", "football"]},
+			{"t": 70.0, "z": ["bucket", "door", "pole", "football", "cone", "newspaper", "basic", "bucket", "door", "football"], "huge": true},
+			{"t": 98.0, "z": ["door", "pole", "bucket", "football", "newspaper", "door", "cone", "football", "bucket", "basic", "door"]},
+			{"t": 126.0, "z": ["football", "pole", "door", "bucket", "cone", "newspaper", "door", "bucket", "door", "football", "basic"], "huge": true},
+			{"t": 156.0, "z": ["bucket", "door", "football", "newspaper", "door", "football", "pole", "basic", "bucket", "door", "football", "bucket"], "huge": true},
+			{"t": 186.0, "z": ["football", "door", "pole", "bucket", "door", "football", "bucket", "newspaper", "basic", "bucket", "door", "football", "bucket"], "huge": true},
+			{"t": 218.0, "z": ["bucket", "door", "football", "pole", "bucket", "door", "football", "newspaper", "cone", "basic", "bucket", "door", "football", "bucket"], "huge": true},
+		],
+	},
 ]
 
 # ---------------- 场景（白天 / 夜晚） ----------------
@@ -615,6 +782,7 @@ const SEED_SELECT_FROM_LEVEL := 7
 const ZOMBIE_NAMES_CN := {
 	"basic": "普通僵尸", "cone": "路障僵尸", "bucket": "铁桶僵尸",
 	"football": "橄榄球僵尸", "door": "铁门僵尸", "flag": "旗帜僵尸",
+	"pole": "撑杆僵尸", "newspaper": "读报僵尸",
 }
 
 
@@ -680,6 +848,11 @@ const MELON_DRAW_W := 46.0
 const MELON_DRAW_H := 58.0
 ## 投掷弧线振幅（像素）：仅叠加在弹体视觉纵向上，不参与命中判定
 const MELON_ARC_HEIGHT := 34.0
+## 甜菜弹道：穿透整行，可依次命中多个僵尸，命中判定半宽
+const BEET_SPEED := 340.0
+const BEET_DRAW_W := 52.0
+const BEET_DRAW_H := 33.0
+const BEET_HIT_HALF_WIDTH := 40.0
 
 # ---------------- 特效尺寸 ----------------
 const FX_SUN_D := 76.0
