@@ -1,0 +1,1942 @@
+openapi: 3.0.3
+info:
+  title: 植物大战僵尸 · Godot 版（pvz-game）后端接口
+  version: 1.0.0
+  description: |
+    按 `pvz-game` 工程真实数据模型整理的后端接口规范，供该游戏对接后端 / Apifox Mock 使用。
+
+    数据来源均为工程内既有结构，字段名与类型严格对齐：
+    - 设置与进度：`scripts/autoload/save_manager.gd`（`bgm_volume` / `sfx_volume` / `muted`、`unlocked_level`、分关 `cleared` / `best_kills`）
+    - 单局快照：`scripts/managers/main_game_manager.gd` 的 `capture_snapshot()`，快照版本 `SNAPSHOT_VERSION = 1`
+    - 关卡 / 植物 / 僵尸：`scripts/autoload/game_config.gd`（`LEVELS` / `PLANTS` / `PLANT_UNLOCK` / `ZOMBIES`）
+    - 音频：`scripts/autoload/sound_manager.gd`（`SOUNDS` / `BGM_PATH`）
+    - 精灵资源：`scripts/autoload/sprite_library.gd` + `scripts/data/sprite_meta.gd`（`SHEETS` / `STATIC_TEXTURES` / `CARD_TEXTURES` / `CARD_REGIONS`）
+
+    说明：
+    - pvz-game 为纯离线单机游戏，工程内没有任何 HTTP 调用；本文件是「为该游戏补一个可 Mock 的后端」而设计的接口。
+    - 不使用登录鉴权（与工程现状一致，进度按单机玩家维度处理）。
+    - 统一响应体为 `{ "code": 0, "msg": "ok", "data": ... }`，与服务端同族的 pvzcode 保持一致的解包约定。
+    - 关卡下标一律 **0 基**（与 `GameConfig.LEVELS[i].id` 对齐）；存档槽位 1~3。
+    - 所有字段名均 snake_case。
+    - 错误码：工程源码内并无错误码体系（GDScript 仅 `push_warning`，不抛错），本规范的错误码为契约层面定义，见 `ErrorCode`。
+  contact:
+    name: pvz-game
+servers:
+  - url: http://localhost:3000/api
+    description: 本地后端（默认端口 3000）
+tags:
+  - name: 概览
+    description: 主菜单聚合数据
+  - name: 设置
+    description: 音量与静音（SaveManager settings 分区）
+  - name: 进度
+    description: 解锁进度与分关最佳击杀（SaveManager progress 分区）
+  - name: 存档
+    description: 3 个单局快照槽位（run snapshot）
+  - name: 关卡
+    description: 关卡元数据与波次表
+  - name: 植物图鉴
+    description: 植物数值与按关解锁
+  - name: 僵尸图鉴
+    description: 僵尸数值与外观关键帧（GameConfig.ZOMBIES）
+  - name: 资源
+    description: 音频与精灵资源清单（SoundManager / SpriteLibrary / SpriteMeta）
+
+paths:
+  # ============================================================
+  # 概览
+  # ============================================================
+  /overview:
+    get:
+      tags: [概览]
+      x-apifox-folder: 概览
+      operationId: getOverview
+      summary: 主菜单聚合数据
+      description: 一次返回解锁进度、通关数、累计最佳击杀、最新存档与设置。
+      responses:
+        '200':
+          description: 聚合数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Overview'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  unlocked_level: 2
+                  total_levels: 40
+                  cleared_levels: 2
+                  total_best_kills: 42
+                  latest_save:
+                    slot: 1
+                    level_index: 2
+                    level_name: 第3关 · 铁桶初现
+                    time: 132.5
+                    sun: 275
+                    killed: 18
+                    saved_at: '2026-10-10T20:15:30'
+                  settings:
+                    bgm_volume: 0.8
+                    sfx_volume: 1.0
+                    muted: false
+
+  # ============================================================
+  # 设置
+  # ============================================================
+  /settings:
+    get:
+      tags: [设置]
+      x-apifox-folder: 设置
+      operationId: getSettings
+      summary: 获取设置
+      responses:
+        '200':
+          description: 设置项
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Settings'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  bgm_volume: 0.8
+                  sfx_volume: 1.0
+                  muted: false
+    put:
+      tags: [设置]
+      x-apifox-folder: 设置
+      operationId: updateSettings
+      summary: 保存设置
+      description: 音量取值 0.0~1.0，越界会被裁剪到区间内（对应 SaveManager 的 set_setting）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Settings'
+            example:
+              bgm_volume: 0.8
+              sfx_volume: 1.0
+              muted: false
+      responses:
+        '200':
+          description: 保存成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Settings'
+              example:
+                code: 0
+                msg: 设置已保存
+                data:
+                  bgm_volume: 0.8
+                  sfx_volume: 1.0
+                  muted: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ============================================================
+  # 进度
+  # ============================================================
+  /progress:
+    get:
+      tags: [进度]
+      x-apifox-folder: 进度
+      operationId: getProgress
+      summary: 获取进度
+      description: 结构对应 SaveManager 的 progress 分区；`levels` 以关卡下标字符串为键，仅包含有记录（已通关或 best_kills > 0）的关卡。
+      responses:
+        '200':
+          description: 进度数据
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Progress'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  unlocked_level: 2
+                  levels:
+                    '0':
+                      cleared: true
+                      best_kills: 18
+                    '1':
+                      cleared: true
+                      best_kills: 24
+    put:
+      tags: [进度]
+      x-apifox-folder: 进度
+      operationId: updateProgress
+      summary: 覆盖保存进度
+      description: 整体覆盖（对应存档文件 progress 分区），用于离线进度同步上云。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Progress'
+            example:
+              unlocked_level: 2
+              levels:
+                '0':
+                  cleared: true
+                  best_kills: 18
+                '1':
+                  cleared: true
+                  best_kills: 24
+      responses:
+        '200':
+          description: 保存成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Progress'
+              example:
+                code: 0
+                msg: 进度已保存
+                data:
+                  unlocked_level: 2
+                  levels:
+                    '0':
+                      cleared: true
+                      best_kills: 18
+                    '1':
+                      cleared: true
+                      best_kills: 24
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /progress/levels/{index}/clear:
+    parameters:
+      - $ref: '#/components/parameters/LevelIndex'
+    post:
+      tags: [进度]
+      x-apifox-folder: 进度
+      operationId: clearLevel
+      summary: 通关上报
+      description: 对应 SaveManager.mark_cleared：标记通关、刷新最佳击杀、解锁下一关，并返回更新后的进度。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kills]
+              properties:
+                kills:
+                  type: integer
+                  description: 本局击杀数
+                  minimum: 0
+                  example: 18
+      responses:
+        '200':
+          description: 上报成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          unlocked_level:
+                            type: integer
+                            minimum: 0
+                            maximum: 39
+                            description: 上报后已解锁到的最大关卡下标（0 基）
+                            example: 3
+                          level:
+                            $ref: '#/components/schemas/LevelProgress'
+              example:
+                code: 0
+                msg: 通关已记录
+                data:
+                  unlocked_level: 3
+                  level:
+                    cleared: true
+                    best_kills: 18
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/LevelNotFound'
+        '409':
+          $ref: '#/components/responses/LevelLocked'
+
+  # ============================================================
+  # 存档（单局快照）
+  # ============================================================
+  /saves:
+    get:
+      tags: [存档]
+      x-apifox-folder: 存档
+      operationId: listSaves
+      summary: 存档槽列表
+      description: '固定返回 3 个槽位（RUN_SLOT_MIN..RUN_SLOT_MAX），空位带 `empty: true`。'
+      responses:
+        '200':
+          description: 槽位数组
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        maxItems: 3
+                        items:
+                          $ref: '#/components/schemas/SaveSlot'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  - slot: 1
+                    level_index: 2
+                    level_name: 第3关 · 铁桶初现
+                    time: 132.5
+                    sun: 275
+                    killed: 18
+                    saved_at: '2026-10-10T20:15:30'
+                  - slot: 2
+                    empty: true
+                  - slot: 3
+                    empty: true
+
+  /saves/{slot}:
+    parameters:
+      - $ref: '#/components/parameters/Slot'
+    get:
+      tags: [存档]
+      x-apifox-folder: 存档
+      operationId: getSaveSlot
+      summary: 读取指定槽位快照
+      responses:
+        '200':
+          description: 快照详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SaveDetail'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  slot: 1
+                  saved_at: '2026-10-10T20:15:30'
+                  snapshot:
+                    version: 1
+                    level_index: 2
+                    level_plants: [sunflower, peashooter]
+                    time: 132.5
+                    sun: 275
+                    killed: 18
+                    sky_sun_timer: 3.2
+                    wave:
+                      index: 3
+                      early_trigger_at: -1.0
+                      lane_cursor: 2
+                      pending:
+                        - dt: 4.5
+                          type: cone
+                        - dt: 4.5
+                          type: basic
+                    card_cooldowns:
+                      sunflower: 0.0
+                      peashooter: 2.3
+                    plants:
+                      - type: sunflower
+                        col: 0
+                        row: 2
+                        hp: 300
+                        state: {}
+                      - type: peashooter
+                        col: 1
+                        row: 2
+                        hp: 300
+                        state: {}
+                    zombies:
+                      - type: basic
+                        row: 2
+                        x: 1500.0
+                        hp: 200
+                        has_hat: false
+                        hat_hp: 0
+                        state: 0
+                        slow_t: 0.0
+                        bite_t: 0.0
+                    mowers:
+                      - row: 0
+                        used: false
+                        running: false
+                        x: 520.0
+        '404':
+          $ref: '#/components/responses/SlotEmpty'
+    put:
+      tags: [存档]
+      x-apifox-folder: 存档
+      operationId: upsertSaveSlot
+      summary: 写入 / 覆盖快照
+      description: 槽位仅允许 1~3；`snapshot.version` 必须为 1（SNAPSHOT_VERSION），否则服务端拒绝保存。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveRequest'
+            example:
+              snapshot:
+                version: 1
+                level_index: 2
+                level_plants: [sunflower, peashooter]
+                time: 132.5
+                sun: 275
+                killed: 18
+                sky_sun_timer: 3.2
+                wave:
+                  index: 3
+                  early_trigger_at: -1.0
+                  lane_cursor: 2
+                  pending:
+                    - dt: 4.5
+                      type: cone
+                card_cooldowns:
+                  sunflower: 0.0
+                  peashooter: 2.3
+                plants:
+                  - type: sunflower
+                    col: 0
+                    row: 2
+                    hp: 300
+                    state: {}
+                zombies:
+                  - type: basic
+                    row: 2
+                    x: 1500.0
+                    hp: 200
+                    has_hat: false
+                    hat_hp: 0
+                    state: 0
+                    slow_t: 0.0
+                    bite_t: 0.0
+                mowers:
+                  - row: 0
+                    used: false
+                    running: false
+                    x: 520.0
+      responses:
+        '200':
+          description: 保存成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          slot:
+                            type: integer
+                            minimum: 1
+                            maximum: 3
+                            example: 1
+              example:
+                code: 0
+                msg: 存档成功
+                data:
+                  slot: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/SnapshotConflict'
+    delete:
+      tags: [存档]
+      x-apifox-folder: 存档
+      operationId: deleteSaveSlot
+      summary: 删除快照
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+              example:
+                code: 0
+                msg: 已删除存档
+                data: null
+
+  # ============================================================
+  # 关卡
+  # ============================================================
+  /levels:
+    get:
+      tags: [关卡]
+      x-apifox-folder: 关卡
+      operationId: listLevels
+      summary: 关卡列表
+      description: 返回全部关卡元数据并附带当前进度（`cleared` / `best_kills` / `unlocked`）。下标 0 基。
+      responses:
+        '200':
+          description: 关卡数组
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        maxItems: 40
+                        items:
+                          $ref: '#/components/schemas/LevelSummary'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  - id: 0
+                    name: 第1关 · 初次防守
+                    difficulty: 1
+                    start_sun: 100
+                    scene: day
+                    cleared: true
+                    best_kills: 18
+                    unlocked: true
+                  - id: 1
+                    name: 第2关 · 路障来袭
+                    difficulty: 1
+                    start_sun: 75
+                    scene: day
+                    cleared: true
+                    best_kills: 24
+                    unlocked: true
+                  - id: 2
+                    name: 第3关 · 铁桶初现
+                    difficulty: 2
+                    start_sun: 75
+                    scene: day
+                    cleared: false
+                    best_kills: 0
+                    unlocked: true
+                  - id: 15
+                    name: 第16关 · 深夜涌动
+                    difficulty: 5
+                    start_sun: 50
+                    scene: night
+                    cleared: false
+                    best_kills: 0
+                    unlocked: false
+
+  /levels/{index}:
+    parameters:
+      - $ref: '#/components/parameters/LevelIndex'
+    get:
+      tags: [关卡]
+      x-apifox-folder: 关卡
+      operationId: getLevel
+      summary: 关卡详情（含波次表）
+      description: |
+        波次由后端下发，避免客户端篡改；`available_plants` / `seed_slot_limit` / `needs_seed_select` 分别对应
+        GameConfig 的 plants_for_level / seed_slot_limit / level_needs_seed_select，已在本接口一次性表达，
+        故不再另开种子候选接口。`zombies` 对应 zombies_for_level（按首次出现顺序去重的僵尸类型，不含大波自动追加的 flag）。
+      responses:
+        '200':
+          description: 关卡详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LevelDetail'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  id: 0
+                  name: 第1关 · 初次防守
+                  difficulty: 1
+                  start_sun: 100
+                  scene: day
+                  waves:
+                    - t: 20.0
+                      z: [basic]
+                    - t: 55.0
+                      z: [basic, basic]
+                    - t: 95.0
+                      z: [basic, basic, basic]
+                      huge: true
+                  available_plants: [sunflower, peashooter]
+                  seed_slot_limit: 2
+                  needs_seed_select: false
+                  zombies: [basic]
+        '404':
+          $ref: '#/components/responses/LevelNotFound'
+
+  /levels/{index}/plants:
+    parameters:
+      - $ref: '#/components/parameters/LevelIndex'
+    get:
+      tags: [关卡]
+      x-apifox-folder: 关卡
+      operationId: getLevelPlants
+      summary: 本关可用植物
+      description: 对应 plants_for_level(index + 1)：PLANT_UNLOCK 中 unlock_level <= 本关卡序号 + 1 的植物全部开放。
+      responses:
+        '200':
+          description: 植物 id 数组
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        maxItems: 13
+                        items:
+                          type: string
+              example:
+                code: 0
+                msg: ok
+                data: [sunflower, peashooter]
+        '404':
+          $ref: '#/components/responses/LevelNotFound'
+
+  # ============================================================
+  # 植物图鉴
+  # ============================================================
+  /plants:
+    get:
+      tags: [植物图鉴]
+      x-apifox-folder: 植物图鉴
+      operationId: listPlants
+      summary: 植物数值列表
+      description: 对齐 GameConfig.PLANTS 与 PLANT_UNLOCK；`unlock_level` 为 0 表示开局即拥有，否则为其数值对应的关卡序号（1 基）通关后解锁。
+      responses:
+        '200':
+          description: 植物数组
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        maxItems: 13
+                        items:
+                          $ref: '#/components/schemas/Plant'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  - id: sunflower
+                    name: Sunflower
+                    cost: 50
+                    hp: 300
+                    recharge: 5.0
+                    unlock_level: 0
+                  - id: peashooter
+                    name: Peashooter
+                    cost: 100
+                    hp: 300
+                    recharge: 6.0
+                    unlock_level: 0
+                  - id: wallnut
+                    name: Wall-nut
+                    cost: 50
+                    hp: 4000
+                    recharge: 7.0
+                    unlock_level: 3
+                  - id: cherrybomb
+                    name: Cherry Bomb
+                    cost: 150
+                    hp: 300
+                    recharge: 15.0
+                    unlock_level: 5
+                  - id: repeater
+                    name: Repeater
+                    cost: 200
+                    hp: 300
+                    recharge: 10.0
+                    unlock_level: 7
+                  - id: jalapeno
+                    name: Jalapeno
+                    cost: 125
+                    hp: 300
+                    recharge: 12.0
+                    unlock_level: 9
+                  - id: snowpea
+                    name: Snow Pea
+                    cost: 175
+                    hp: 300
+                    recharge: 7.5
+                    unlock_level: 11
+                  - id: threepeater
+                    name: Threepeater
+                    cost: 325
+                    hp: 300
+                    recharge: 7.5
+                    unlock_level: 17
+                  - id: potato_mine
+                    name: Potato Mine
+                    cost: 25
+                    hp: 300
+                    recharge: 20.0
+                    unlock_level: 4
+                  - id: squash
+                    name: Squash
+                    cost: 50
+                    hp: 300
+                    recharge: 12.0
+                    unlock_level: 13
+                  - id: chomper
+                    name: Chomper
+                    cost: 150
+                    hp: 300
+                    recharge: 11.0
+                    unlock_level: 15
+                  - id: melonpult
+                    name: Melon-pult
+                    cost: 300
+                    hp: 300
+                    recharge: 8.0
+                    unlock_level: 17
+                  - id: beetroot
+                    name: Beetroot
+                    cost: 125
+                    hp: 300
+                    recharge: 7.5
+                    unlock_level: 21
+
+  # ============================================================
+  # 僵尸图鉴
+  # ============================================================
+  /zombies:
+    get:
+      tags: [僵尸图鉴]
+      x-apifox-folder: 僵尸图鉴
+      operationId: listZombies
+      summary: 僵尸图鉴列表
+      description: |
+        对齐 GameConfig.ZOMBIES。字段键名与源码完全一致：公共键 name / hp / speed / zw / zh / walk / attack，
+        以及各类型独有的 hat_hp / hat_ratio / hat_removed_* / has_flag / jump / rip 等（仅在该僵尸存在时返回）。
+        源码未提供 damage / has_hat 字段（啃食伤害是全局常量 ZOMBIE_BITE_DAMAGE），故不在本列表建模。
+      responses:
+        '200':
+          description: 僵尸数组
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        maxItems: 8
+                        items:
+                          $ref: '#/components/schemas/Zombie'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  - id: basic
+                    name: Zombie
+                    hp: 200
+                    speed: 26.0
+                    zw: 128.0
+                    zh: 150.0
+                    walk: z_basic_walk
+                    attack: z_basic_attack
+                    dirty_walk: z_losthead_walk
+                    dirty_attack: z_losthead_attack
+                    dirt_ratio: 0.5
+                  - id: cone
+                    name: Conehead
+                    hp: 640
+                    speed: 26.0
+                    zw: 128.0
+                    zh: 150.0
+                    walk: z_cone_walk
+                    attack: z_cone_attack
+                    hat_hp: 300
+                    hat_ratio: 0.47
+                    hat_removed_walk: z_basic_walk
+                    hat_removed_attack: z_basic_attack
+                    dirty_walk: z_losthead_walk
+                    dirty_attack: z_losthead_attack
+                    dirt_ratio: 0.27
+                  - id: flag
+                    name: Flag Zombie
+                    hp: 200
+                    speed: 32.0
+                    zw: 128.0
+                    zh: 150.0
+                    walk: z_basic_walk
+                    attack: z_basic_attack
+                    dirty_walk: z_losthead_walk
+                    dirty_attack: z_losthead_attack
+                    dirt_ratio: 0.5
+                    has_flag: true
+
+  /zombies/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ZombieId'
+    get:
+      tags: [僵尸图鉴]
+      x-apifox-folder: 僵尸图鉴
+      operationId: getZombie
+      summary: 僵尸详情
+      description: 按 id 返回单个僵尸的完整配置；id 不在 ZOMBIES 中时返回 404（ErrorCode 4003）。
+      responses:
+        '200':
+          description: 僵尸详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Zombie'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  id: pole
+                  name: Pole Vaulting
+                  hp: 340
+                  speed: 30.0
+                  zw: 300.0
+                  zh: 176.0
+                  walk: z_pole_walk
+                  attack: z_pole_attack
+                  jump: z_pole_jump
+                  after_jump_walk: z_pole_after_jump
+                  dirty_walk: z_pole_losthead
+                  dirty_attack: z_pole_losthead
+                  dirt_ratio: 0.5
+        '404':
+          $ref: '#/components/responses/ZombieNotFound'
+
+  # ============================================================
+  # 资源
+  # ============================================================
+  /audio:
+    get:
+      tags: [资源]
+      x-apifox-folder: 资源
+      operationId: getAudio
+      summary: 音频资源清单
+      description: 对齐 SoundManager 的 SOUNDS（10 条音效，键为音效名）与 BGM_PATH；播放增益以源码常量（分贝）下发。
+      responses:
+        '200':
+          description: 音频资源
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AudioInfo'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  bgm:
+                    name: background
+                    path: res://assets/sounds/background.wav
+                  sfx:
+                    - name: zombies_are_coming
+                      path: res://assets/sounds/zombies_are_coming.wav
+                    - name: plant
+                      path: res://assets/sounds/plant.wav
+                    - name: chomp
+                      path: res://assets/sounds/chomp.wav
+                    - name: brainz
+                      path: res://assets/sounds/brainz.wav
+                  pool_size: 8
+                  sfx_volume_db: -6.0
+                  bgm_volume_db: -16.0
+
+  /sprites:
+    get:
+      tags: [资源]
+      x-apifox-folder: 资源
+      operationId: getSprites
+      summary: 精灵资源元数据清单
+      description: |
+        对齐 SpriteMeta.SHEETS（横向精灵表：宽高 / 帧数 / 帧时长 / 源路径）与
+        SpriteLibrary 的 STATIC_TEXTURES、CARD_TEXTURES、CARD_REGIONS。
+      responses:
+        '200':
+          description: 精灵资源
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpritesInfo'
+              example:
+                code: 0
+                msg: ok
+                data:
+                  sheets:
+                    - name: sunflower
+                      w: 73
+                      h: 74
+                      frames: 18
+                      d: 0.11
+                      src: res://assets/sprites/sunflower.png
+                    - name: z_pole_walk
+                      w: 300
+                      h: 176
+                      frames: 10
+                      d: 0.18
+                      src: res://assets/sprites/z_pole_walk.png
+                    - name: walnut_low
+                      w: 66
+                      h: 75
+                      frames: 4
+                      delays: [0.2, 0.2, 0.2, 1.0]
+                      src: res://assets/sprites/walnut_low.png
+                  static_textures:
+                    - name: lawn
+                      path: res://assets/lawn.png
+                    - name: pea
+                      path: res://assets/pea.png
+                  card_textures:
+                    - name: sunflower
+                      path: res://assets/card_sunflower.png
+                  card_regions:
+                    - name: melonpult
+                      x: 0.0
+                      y: 0.0
+                      w: 100.0
+                      h: 60.0
+
+components:
+  parameters:
+    Slot:
+      name: slot
+      in: path
+      required: true
+      description: 存档槽位，取值 1~3
+      schema:
+        type: integer
+        enum: [1, 2, 3]
+        example: 1
+    LevelIndex:
+      name: index
+      in: path
+      required: true
+      description: 关卡下标，0 基（与 GameConfig.LEVELS[i].id 对齐），取值 0~39
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 39
+        example: 0
+    ZombieId:
+      name: id
+      in: path
+      required: true
+      description: 僵尸类型 id（GameConfig.ZOMBIES 的键）
+      schema:
+        type: string
+        enum: [basic, cone, bucket, football, door, flag, pole, newspaper]
+        example: basic
+
+  responses:
+    BadRequest:
+      description: 请求参数非法（缺字段或取值越界，ErrorCode 4001）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 4001
+            msg: 参数非法
+            data: null
+    ValidationFailed:
+      description: 校验失败（字段结构或取值不满足契约，ErrorCode 4002）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 4002
+            msg: 校验失败
+            data: null
+    SlotEmpty:
+      description: 该存档槽位暂无快照（ErrorCode 2001）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 2001
+            msg: 该槽位暂无存档
+            data: null
+    LevelNotFound:
+      description: 关卡不存在（下标越界，ErrorCode 3001）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 3001
+            msg: 关卡不存在
+            data: null
+    LevelLocked:
+      description: 关卡尚未解锁（ErrorCode 3002）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 3002
+            msg: 关卡未解锁
+            data: null
+    ZombieNotFound:
+      description: 僵尸类型不存在（ErrorCode 4003）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 4003
+            msg: 僵尸类型不存在
+            data: null
+    SnapshotConflict:
+      description: 快照版本不兼容或缺少快照（ErrorCode 2003）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 2003
+            msg: 快照版本不兼容
+            data: null
+
+  schemas:
+    # ---------- 统一响应体 ----------
+    Envelope:
+      type: object
+      description: 统一响应体，data 视具体接口而定
+      required: [code, msg, data]
+      properties:
+        code:
+          type: integer
+          description: 0 表示成功，非 0 为业务错误码
+          example: 0
+        msg:
+          type: string
+          description: 提示信息
+          example: ok
+        data:
+          nullable: true
+          example: null
+
+    ErrorCode:
+      type: integer
+      description: |
+        业务错误码。工程源码内无错误码体系（GDScript 仅告警，不抛错），以下取值是本规范定义的契约码：
+        - 2001 存档槽位为空
+        - 2002 存档槽位非法（非 1~3）
+        - 2003 快照版本不兼容或缺少快照
+        - 3001 关卡不存在
+        - 3002 关卡未解锁
+        - 4001 参数非法
+        - 4002 校验失败
+        - 4003 图鉴 / 资源不存在（如僵尸类型不存在）
+      enum: [2001, 2002, 2003, 3001, 3002, 4001, 4002, 4003]
+
+    ErrorResponse:
+      type: object
+      description: 业务错误响应
+      required: [code, msg, data]
+      properties:
+        code:
+          allOf:
+            - $ref: '#/components/schemas/ErrorCode'
+          description: 业务错误码，取值见 ErrorCode
+          example: 2001
+        msg:
+          type: string
+          example: 该槽位暂无存档
+        data:
+          nullable: true
+          example: null
+      example:
+        code: 2001
+        msg: 该槽位暂无存档
+        data: null
+
+    # ---------- 设置 ----------
+    Settings:
+      type: object
+      description: 对齐 SaveManager 的 settings 分区
+      required: [bgm_volume, sfx_volume, muted]
+      properties:
+        bgm_volume:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: 背景音乐音量
+          example: 0.8
+        sfx_volume:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: 音效音量
+          example: 1.0
+        muted:
+          type: boolean
+          description: 是否静音
+          example: false
+
+    # ---------- 进度 ----------
+    Progress:
+      type: object
+      description: 对齐 SaveManager 的 progress 分区
+      required: [unlocked_level, levels]
+      properties:
+        unlocked_level:
+          type: integer
+          minimum: 0
+          maximum: 39
+          description: 已解锁到的最大关卡下标（0 基）；is_unlocked(i) == i <= unlocked_level
+          example: 2
+        levels:
+          type: object
+          description: 分关进度表，键为关卡下标的字符串（仅含有记录的关卡）
+          additionalProperties:
+            $ref: '#/components/schemas/LevelProgress'
+          example:
+            '0':
+              cleared: true
+              best_kills: 18
+            '1':
+              cleared: true
+              best_kills: 24
+
+    LevelProgress:
+      type: object
+      required: [cleared, best_kills]
+      properties:
+        cleared:
+          type: boolean
+          description: 是否已通关
+          example: true
+        best_kills:
+          type: integer
+          minimum: 0
+          description: 该关历史最佳击杀数
+          example: 18
+
+    # ---------- 关卡 ----------
+    LevelSummary:
+      type: object
+      required: [id, name, difficulty, start_sun, scene, cleared, best_kills, unlocked]
+      properties:
+        id:
+          type: integer
+          minimum: 0
+          maximum: 39
+          description: 关卡下标（0 基）
+          example: 0
+        name:
+          type: string
+          minLength: 1
+          description: 关卡显示名（GameConfig.LEVELS[i].name）
+          example: 第1关 · 初次防守
+        difficulty:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: 难度 1~10
+          example: 1
+        start_sun:
+          type: integer
+          minimum: 0
+          description: 初始阳光
+          example: 100
+        scene:
+          type: string
+          enum: [day, night]
+          description: 场景（缺省 day）
+          example: day
+        cleared:
+          type: boolean
+          example: true
+        best_kills:
+          type: integer
+          minimum: 0
+          example: 18
+        unlocked:
+          type: boolean
+          example: true
+
+    LevelDetail:
+      type: object
+      required: [id, name, difficulty, start_sun, scene, waves, available_plants, seed_slot_limit, needs_seed_select, zombies]
+      properties:
+        id:
+          type: integer
+          minimum: 0
+          maximum: 39
+          example: 0
+        name:
+          type: string
+          minLength: 1
+          example: 第1关 · 初次防守
+        difficulty:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 1
+        start_sun:
+          type: integer
+          minimum: 0
+          example: 100
+        scene:
+          type: string
+          enum: [day, night]
+          example: day
+        waves:
+          type: array
+          minItems: 1
+          maxItems: 12
+          items:
+            $ref: '#/components/schemas/Wave'
+        available_plants:
+          type: array
+          description: 本关可用植物 id（对应 plants_for_level）
+          maxItems: 13
+          items:
+            type: string
+          example: [sunflower, peashooter]
+        seed_slot_limit:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: 本关卡片槽位上限（对应 seed_slot_limit）
+          example: 2
+        needs_seed_select:
+          type: boolean
+          description: 是否需要先经过选卡界面（level_needs_seed_select：第 7 关起为 true）
+          example: false
+        zombies:
+          type: array
+          description: 本关会出现的僵尸类型（对应 zombies_for_level，按首次出现顺序去重，不含大波自动追加的 flag）
+          maxItems: 8
+          items:
+            type: string
+            enum: [basic, cone, bucket, football, door, flag, pole, newspaper]
+          example: [basic]
+
+    Wave:
+      type: object
+      required: [t, z]
+      properties:
+        t:
+          type: number
+          format: float
+          minimum: 0
+          description: 波次开始时间（秒）
+          example: 20.0
+        z:
+          type: array
+          minimum: 1
+          description: 该波僵尸类型
+          minItems: 1
+          maxItems: 20
+          items:
+            type: string
+            enum: [basic, cone, bucket, football, door, flag, pole, newspaper]
+          example: [basic, basic]
+        huge:
+          type: boolean
+          description: 是否大波（自动追加旗帜僵尸与横幅）
+          example: true
+
+    # ---------- 植物图鉴 ----------
+    Plant:
+      type: object
+      description: 对齐 GameConfig.PLANTS 与 PLANT_UNLOCK
+      required: [id, name, cost, hp, recharge, unlock_level]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: 植物 id（PLANT_ORDER 顺序）
+          example: sunflower
+        name:
+          type: string
+          minLength: 1
+          description: 显示名（工程内为英文名）
+          example: Sunflower
+        cost:
+          type: integer
+          minimum: 0
+          description: 阳光价格
+          example: 50
+        hp:
+          type: integer
+          minimum: 1
+          example: 300
+        recharge:
+          type: number
+          format: float
+          minimum: 0
+          description: 卡片冷却（秒）
+          example: 5.0
+        unlock_level:
+          type: integer
+          minimum: 0
+          maximum: 39
+          description: 0 表示开局即拥有；否则为该数值（1 基关卡序号）通关后解锁
+          example: 0
+
+    # ---------- 僵尸图鉴 ----------
+    Zombie:
+      type: object
+      description: 对齐 GameConfig.ZOMBIES 的单项；公共键 + 各类型专属键，键名与源码完全一致
+      required: [id, name, hp, speed, zw, zh, walk, attack]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: 僵尸类型 id（ZOMBIES 的键，非字典内字段）
+          example: basic
+        name:
+          type: string
+          minLength: 1
+          description: 显示名（工程内为英文名）
+          example: Zombie
+        hp:
+          type: integer
+          minimum: 1
+          description: 总生命
+          example: 200
+        speed:
+          type: number
+          format: float
+          description: 移动速度（像素/秒）
+          example: 26.0
+        zw:
+          type: number
+          format: float
+          description: 绘制宽度
+          example: 128.0
+        zh:
+          type: number
+          format: float
+          description: 绘制高度
+          example: 150.0
+        walk:
+          type: string
+          description: 行走动画的精灵表名
+          example: z_basic_walk
+        attack:
+          type: string
+          description: 啃食动画的精灵表名
+          example: z_basic_attack
+        dirty_walk:
+          type: string
+          description: 损毁态行走动画的精灵表名
+          example: z_losthead_walk
+        dirty_attack:
+          type: string
+          description: 损毁态啃食动画的精灵表名
+          example: z_losthead_attack
+        dirt_ratio:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: 剩余生命比例低于该值时切换损毁外观
+          example: 0.5
+        hat_hp:
+          type: integer
+          minimum: 0
+          description: 顶具（护甲段）独立生命，仅带顶具僵尸存在
+          example: 300
+        hat_ratio:
+          type: number
+          format: float
+          description: 顶具外观切换比例，仅带顶具僵尸存在
+          example: 0.47
+        hat_removed_speed:
+          type: number
+          format: float
+          description: 顶具被打掉后的速度，仅部分僵尸存在
+          example: 26.0
+        hat_removed_walk:
+          type: string
+          description: 顶具被打掉后的行走精灵表名
+          example: z_basic_walk
+        hat_removed_attack:
+          type: string
+          description: 顶具被打掉后的啃食精灵表名
+          example: z_basic_attack
+        has_flag:
+          type: boolean
+          description: 是否持旗（仅 flag 僵尸存在）
+          example: true
+        jump:
+          type: string
+          description: 翻越动画精灵表名（仅 pole 僵尸存在）
+          example: z_pole_jump
+        after_jump_walk:
+          type: string
+          description: 翻越落地后的行走精灵表名（仅 pole 僵尸存在）
+          example: z_pole_after_jump
+        rip:
+          type: string
+          description: 报纸被撕碎动画精灵表名（仅 newspaper 僵尸存在）
+          example: z_newspaper_rip
+
+    # ---------- 单局快照 ----------
+    SaveSlot:
+      type: object
+      description: 列表项；空槽位仅含 slot 与 empty
+      required: [slot]
+      properties:
+        slot:
+          type: integer
+          minimum: 1
+          maximum: 3
+          example: 1
+        empty:
+          type: boolean
+          description: 空槽位标记，非空时不返回该字段
+          example: true
+        level_index:
+          type: integer
+          minimum: 0
+          maximum: 39
+          description: 快照所在关卡下标
+          example: 2
+        level_name:
+          type: string
+          minLength: 1
+          example: 第3关 · 铁桶初现
+        time:
+          type: number
+          format: float
+          minimum: 0
+          description: 对局进行秒数
+          example: 132.5
+        sun:
+          type: integer
+          minimum: 0
+          example: 275
+        killed:
+          type: integer
+          minimum: 0
+          example: 18
+        saved_at:
+          type: string
+          format: date-time
+          description: 保存时间（ISO 8601）
+          example: '2026-10-10T20:15:30'
+
+    SaveDetail:
+      type: object
+      required: [slot, saved_at, snapshot]
+      properties:
+        slot:
+          type: integer
+          minimum: 1
+          maximum: 3
+          example: 1
+        saved_at:
+          type: string
+          format: date-time
+          example: '2026-10-10T20:15:30'
+        snapshot:
+          $ref: '#/components/schemas/RunSnapshot'
+
+    SaveRequest:
+      type: object
+      required: [snapshot]
+      properties:
+        snapshot:
+          $ref: '#/components/schemas/RunSnapshot'
+
+    RunSnapshot:
+      type: object
+      description: 单局快照，对应 MainGameManager.capture_snapshot()（SNAPSHOT_VERSION = 1）
+      required: [version, level_index, level_plants, time, sun, killed, wave, plants, zombies, mowers]
+      properties:
+        version:
+          type: integer
+          description: 快照结构版本，当前恒为 1
+          enum: [1]
+          example: 1
+        level_index:
+          type: integer
+          minimum: 0
+          maximum: 39
+          example: 2
+        level_plants:
+          type: array
+          description: 本关携带的卡片植物 id
+          maxItems: 10
+          items:
+            type: string
+          example: [sunflower, peashooter]
+        time:
+          type: number
+          format: float
+          minimum: 0
+          description: 关卡已进行时间（秒）
+          example: 132.5
+        sun:
+          type: integer
+          minimum: 0
+          description: 当前阳光
+          example: 275
+        killed:
+          type: integer
+          minimum: 0
+          description: 当前击杀数
+          example: 18
+        sky_sun_timer:
+          type: number
+          format: float
+          minimum: 0
+          description: 天降阳光计时器剩余（秒）
+          example: 3.2
+        wave:
+          $ref: '#/components/schemas/WaveSnapshot'
+        card_cooldowns:
+          type: object
+          description: 各卡剩余冷却，键为植物 id，值为剩余秒数
+          additionalProperties:
+            type: number
+            minimum: 0
+          example:
+            sunflower: 0.0
+            peashooter: 2.3
+        plants:
+          type: array
+          maxItems: 45
+          items:
+            $ref: '#/components/schemas/PlantSnapshot'
+        zombies:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/ZombieSnapshot'
+        mowers:
+          type: array
+          description: 每行一个，共 5 个
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/MowerSnapshot'
+
+    WaveSnapshot:
+      type: object
+      description: 对应 WaveManager.to_snapshot()
+      required: [index, early_trigger_at, lane_cursor, pending]
+      properties:
+        index:
+          type: integer
+          minimum: 0
+          description: 当前波次下标
+          example: 3
+        early_trigger_at:
+          type: number
+          format: float
+          description: 提前触发时刻；-1 表示未触发提前等待
+          example: -1.0
+        lane_cursor:
+          type: integer
+          minimum: 0
+          maximum: 4
+          description: 上一只僵尸落位行（0~4）
+          example: 2
+        pending:
+          type: array
+          description: 待出场僵尸（dt 为相对剩余秒数）
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/PendingSpawn'
+
+    PendingSpawn:
+      type: object
+      required: [dt, type]
+      properties:
+        dt:
+          type: number
+          format: float
+          description: 相对当前时刻的剩余秒数
+          example: 4.5
+        type:
+          type: string
+          description: 僵尸类型 id
+          enum: [basic, cone, bucket, football, door, flag, pole, newspaper]
+          example: cone
+
+    PlantSnapshot:
+      type: object
+      description: 对应 GridManager.to_snapshot() 的单元项
+      required: [type, col, row, hp, state]
+      properties:
+        type:
+          type: string
+          description: 植物 id
+          example: sunflower
+        col:
+          type: integer
+          minimum: 0
+          maximum: 8
+          description: 列（0~8）
+          example: 0
+        row:
+          type: integer
+          minimum: 0
+          maximum: 4
+          description: 行（0~4）
+          example: 2
+        hp:
+          type: integer
+          minimum: 0
+          example: 300
+        state:
+          type: object
+          description: 植物私有状态（由各植物 snapshot_state() 决定，结构随植物类型而变）
+          additionalProperties: true
+          example: {}
+
+    ZombieSnapshot:
+      type: object
+      description: 对应 ZombieBase.to_snapshot()
+      required: [type, row, x, hp, has_hat, hat_hp, state, slow_t, bite_t]
+      properties:
+        type:
+          type: string
+          description: 僵尸 id
+          enum: [basic, cone, bucket, football, door, flag, pole, newspaper]
+          example: basic
+        row:
+          type: integer
+          minimum: 0
+          maximum: 4
+          description: 所在行（0~4）
+          example: 2
+        x:
+          type: number
+          format: float
+          description: 世界坐标 x
+          example: 1500.0
+        hp:
+          type: integer
+          minimum: 0
+          example: 200
+        has_hat:
+          type: boolean
+          description: 是否仍持有顶具
+          example: false
+        hat_hp:
+          type: integer
+          minimum: 0
+          description: 顶具剩余生命
+          example: 0
+        state:
+          type: integer
+          description: 状态机（0 Walk / 1 Eat；Dying / Burnt 等瞬态不入档）
+          enum: [0, 1]
+          example: 0
+        slow_t:
+          type: number
+          format: float
+          minimum: 0
+          description: 剩余减速时长（秒）
+          example: 0.0
+        bite_t:
+          type: number
+          format: float
+          minimum: 0
+          description: 下次啃食倒计时（秒）
+          example: 0.0
+
+    MowerSnapshot:
+      type: object
+      description: 对应 LawnMower.to_snapshot()
+      required: [row, used, running, x]
+      properties:
+        row:
+          type: integer
+          minimum: 0
+          maximum: 4
+          description: 所在行（0~4）
+          example: 0
+        used:
+          type: boolean
+          description: 是否已使用
+          example: false
+        running:
+          type: boolean
+          description: 是否正在冲出
+          example: false
+        x:
+          type: number
+          format: float
+          example: 520.0
+
+    # ---------- 音频资源 ----------
+    AudioTrack:
+      type: object
+      description: 音频资源条目（SoundManager.SOUNDS 的「音效名 -> 路径」映射项）
+      required: [name, path]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: 音效名（SOUNDS 的键）
+          example: zombies_are_coming
+        path:
+          type: string
+          pattern: '^res://assets/sounds/.+\.wav$'
+          description: res:// 资源路径
+          example: res://assets/sounds/plant.wav
+
+    AudioInfo:
+      type: object
+      description: 对齐 SoundManager 的音频资源与增益常量
+      required: [bgm, sfx, pool_size, sfx_volume_db, bgm_volume_db]
+      properties:
+        bgm:
+          allOf:
+            - $ref: '#/components/schemas/AudioTrack'
+          description: 背景音乐（BGM_PATH）；name 值 background 取自文件名，源码未单独定义名称常量
+        sfx:
+          type: array
+          description: 全部音效（SOUNDS，共 10 条）
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/AudioTrack'
+        pool_size:
+          type: integer
+          minimum: 1
+          description: 音效播放器对象池大小（POOL_SIZE）
+          example: 8
+        sfx_volume_db:
+          type: number
+          format: float
+          description: 音效基础增益（SFX_VOLUME_DB）
+          example: -6.0
+        bgm_volume_db:
+          type: number
+          format: float
+          description: 背景音乐基础增益（BGM_VOLUME_DB）
+          example: -16.0
+
+    # ---------- 精灵资源 ----------
+    SpriteSheet:
+      type: object
+      description: SpriteMeta.SHEETS 中的一张横向精灵表
+      required: [name, w, h, frames, src]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: 精灵表名（SHEETS 的键）
+          example: sunflower
+        w:
+          type: integer
+          minimum: 1
+          description: 单帧宽（像素）
+          example: 73
+        h:
+          type: integer
+          minimum: 1
+          description: 单帧高（像素）
+          example: 74
+        frames:
+          type: integer
+          minimum: 1
+          description: 帧数
+          example: 18
+        d:
+          type: number
+          format: float
+          minimum: 0
+          description: 统一帧时长（秒）；仅当未单独维护 delays 时存在
+          example: 0.11
+        delays:
+          type: array
+          description: 逐帧时长（秒）；仅部分精灵表单独维护
+          items:
+            type: number
+          example: [0.2, 0.2, 0.2, 1.0]
+        src:
+          type: string
+          pattern: '^res://assets/sprites/.+\.png$'
+          description: res:// 资源路径
+          example: res://assets/sprites/sunflower.png
+
+    NamedResource:
+      type: object
+      description: 「名称 -> 资源路径」映射项（STATIC_TEXTURES / CARD_TEXTURES）
+      required: [name, path]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: 名称（键）
+          example: lawn
+        path:
+          type: string
+          pattern: '^res://assets/.+\.png$'
+          description: res:// 资源路径
+          example: res://assets/lawn.png
+
+    CardRegion:
+      type: object
+      description: 卡片图切分区域（CARD_REGIONS，对应 Rect2(x, y, w, h)）
+      required: [name, x, y, w, h]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: 植物 id（键）
+          example: melonpult
+        x:
+          type: number
+          format: float
+          example: 0.0
+        y:
+          type: number
+          format: float
+          example: 0.0
+        w:
+          type: number
+          format: float
+          example: 100.0
+        h:
+          type: number
+          format: float
+          example: 60.0
+
+    SpritesInfo:
+      type: object
+      description: 对齐 SpriteMeta.SHEETS 与 SpriteLibrary 的静态图 / 卡片图 / 卡片切分区域
+      required: [sheets, static_textures, card_textures, card_regions]
+      properties:
+        sheets:
+          type: array
+          description: 全部精灵表（SpriteMeta.SHEETS）
+          maxItems: 60
+          items:
+            $ref: '#/components/schemas/SpriteSheet'
+        static_textures:
+          type: array
+          description: 静态单图（STATIC_TEXTURES，键为素材名）
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/NamedResource'
+        card_textures:
+          type: array
+          description: 卡片图（CARD_TEXTURES，键为植物 id）
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/NamedResource'
+        card_regions:
+          type: array
+          description: 卡片图切分区域（CARD_REGIONS，键为植物 id）
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/CardRegion'
+
+    # ---------- 概览 ----------
+    Overview:
+      type: object
+      required: [unlocked_level, total_levels, cleared_levels, total_best_kills, latest_save, settings]
+      properties:
+        unlocked_level:
+          type: integer
+          minimum: 0
+          maximum: 39
+          description: 已解锁到的最大关卡下标
+          example: 2
+        total_levels:
+          type: integer
+          minimum: 1
+          description: 关卡总数（当前配置为前 30 关 + 后日谈扩展，共 40）
+          example: 40
+        cleared_levels:
+          type: integer
+          minimum: 0
+          description: 已通关关卡数
+          example: 2
+        total_best_kills:
+          type: integer
+          minimum: 0
+          description: 累计最佳击杀（各关 best_kills 之和）
+          example: 42
+        latest_save:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/SaveSlot'
+          description: 最近一次存档摘要，无存档时为 null
+        settings:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Settings'
+          description: 当前设置，无存档时为 null

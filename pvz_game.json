@@ -1,0 +1,3497 @@
+{
+  "title": "数据库物理结构",
+  "database": "mysql",
+  "tables": [
+    {
+      "id": 0,
+      "name": "players",
+      "comment": "玩家",
+      "color": "#dae8fc",
+      "x": 40,
+      "y": 40,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 0,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 1,
+          "name": "player_uid",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "单机玩家标识（工程无登录鉴权，按设备/玩家维度）"
+        },
+        {
+          "id": 2,
+          "name": "created_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "创建时间"
+        },
+        {
+          "id": 3,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间（更新时自动刷新）"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "player_settings",
+      "comment": "玩家设置",
+      "color": "#dae8fc",
+      "x": 40,
+      "y": 300,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 4,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 5,
+          "name": "player_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属玩家（1:1）"
+        },
+        {
+          "id": 6,
+          "name": "bgm_volume",
+          "type": "DECIMAL",
+          "size": "4,3",
+          "default": "0.800",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "背景音乐音量，0.000~1.000（默认 DEFAULT_BGM_VOLUME=0.8）"
+        },
+        {
+          "id": 7,
+          "name": "sfx_volume",
+          "type": "DECIMAL",
+          "size": "4,3",
+          "default": "1.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "音效音量，0.000~1.000（默认 DEFAULT_SFX_VOLUME=1.0）"
+        },
+        {
+          "id": 8,
+          "name": "muted",
+          "type": "TINYINT",
+          "size": "1",
+          "default": "false",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "是否静音（默认 DEFAULT_MUTED=false）"
+        },
+        {
+          "id": 9,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "player_progress",
+      "comment": "玩家总进度",
+      "color": "#d5e8d4",
+      "x": 40,
+      "y": 640,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 10,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 11,
+          "name": "player_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属玩家（1:1）"
+        },
+        {
+          "id": 12,
+          "name": "unlocked_level",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "已解锁到的最大关卡下标（0 基，0~39）"
+        },
+        {
+          "id": 13,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "player_level_progress",
+      "comment": "玩家分关进度",
+      "color": "#d5e8d4",
+      "x": 40,
+      "y": 900,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_player_level",
+          "unique": true,
+          "fields": [
+            15,
+            16
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 14,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 15,
+          "name": "player_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属玩家"
+        },
+        {
+          "id": 16,
+          "name": "level_index",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "关卡下标（0 基，外键 → levels.id）"
+        },
+        {
+          "id": 17,
+          "name": "cleared",
+          "type": "TINYINT",
+          "size": "1",
+          "default": "false",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "是否已通关"
+        },
+        {
+          "id": 18,
+          "name": "best_kills",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "该关历史最佳击杀数"
+        },
+        {
+          "id": 19,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "level_clear_events",
+      "comment": "通关事件流水（运营指标数据源）",
+      "color": "#cde7f0",
+      "x": 40,
+      "y": 1240,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "idx_player_time",
+          "unique": false,
+          "fields": [
+            21,
+            24
+          ]
+        },
+        {
+          "id": 1,
+          "name": "idx_level_time",
+          "unique": false,
+          "fields": [
+            22,
+            24
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 20,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 21,
+          "name": "player_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属玩家"
+        },
+        {
+          "id": 22,
+          "name": "level_index",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "关卡下标（0 基，外键 → levels.id）"
+        },
+        {
+          "id": 23,
+          "name": "kills",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "本局击杀数（clearLevel 上报值）"
+        },
+        {
+          "id": 24,
+          "name": "reported_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "上报时间"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "run_saves",
+      "comment": "单局存档（快照）",
+      "color": "#ffe6cc",
+      "x": 400,
+      "y": 40,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_player_slot",
+          "unique": true,
+          "fields": [
+            26,
+            27
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 25,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 26,
+          "name": "player_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属玩家"
+        },
+        {
+          "id": 27,
+          "name": "slot",
+          "type": "TINYINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "存档槽位，1~3（RUN_SLOT_MIN~RUN_SLOT_MAX）"
+        },
+        {
+          "id": 28,
+          "name": "snapshot_version",
+          "type": "INT",
+          "size": "",
+          "default": "1",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "快照结构版本，恒为 1（SNAPSHOT_VERSION），否则拒绝保存"
+        },
+        {
+          "id": 29,
+          "name": "level_index",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所在关卡下标（0 基，外键 → levels.id）"
+        },
+        {
+          "id": 30,
+          "name": "level_name",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "关卡显示名（冗余，供存档列表直接展示）"
+        },
+        {
+          "id": 31,
+          "name": "time",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "0.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "对局已进行时间（秒）"
+        },
+        {
+          "id": 32,
+          "name": "sun",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "当前阳光"
+        },
+        {
+          "id": 33,
+          "name": "killed",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "当前击杀数"
+        },
+        {
+          "id": 34,
+          "name": "sky_sun_timer",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "0.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "天降阳光计时器剩余（秒）"
+        },
+        {
+          "id": 35,
+          "name": "saved_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "保存时间（契约的 ISO 8601 → datetime）"
+        },
+        {
+          "id": 36,
+          "name": "created_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "创建时间"
+        },
+        {
+          "id": 37,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "run_save_cards",
+      "comment": "存档·携带卡片植物",
+      "color": "#ffe6cc",
+      "x": 400,
+      "y": 680,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_save_card_seq",
+          "unique": true,
+          "fields": [
+            39,
+            40
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 38,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 39,
+          "name": "save_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属存档"
+        },
+        {
+          "id": 40,
+          "name": "seq",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "卡槽顺序（0 基）"
+        },
+        {
+          "id": 41,
+          "name": "plant_id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "植物 id（外键 → plants.id）"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "run_save_card_cooldowns",
+      "comment": "存档·卡片冷却",
+      "color": "#ffe6cc",
+      "x": 400,
+      "y": 880,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_save_cd_plant",
+          "unique": true,
+          "fields": [
+            43,
+            44
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 42,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 43,
+          "name": "save_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属存档"
+        },
+        {
+          "id": 44,
+          "name": "plant_id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "植物 id（外键 → plants.id）"
+        },
+        {
+          "id": 45,
+          "name": "cooldown_seconds",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "0.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "该卡剩余冷却（秒）"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "run_save_wave_states",
+      "comment": "存档·波次状态",
+      "color": "#ffe6cc",
+      "x": 400,
+      "y": 1120,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 46,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 47,
+          "name": "save_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属存档（1:1）"
+        },
+        {
+          "id": 48,
+          "name": "wave_index",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "当前波次下标"
+        },
+        {
+          "id": 49,
+          "name": "early_trigger_at",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "-1.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "提前触发时刻；-1 表示未触发提前等待"
+        },
+        {
+          "id": 50,
+          "name": "lane_cursor",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "上一只僵尸落位行（0~4）"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "run_save_pending_spawns",
+      "comment": "存档·待出场僵尸",
+      "color": "#ffe6cc",
+      "x": 400,
+      "y": 1360,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_pending_seq",
+          "unique": true,
+          "fields": [
+            52,
+            53
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 51,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 52,
+          "name": "wave_state_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属波次状态"
+        },
+        {
+          "id": 53,
+          "name": "seq",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "队列顺序（0 基）"
+        },
+        {
+          "id": 54,
+          "name": "dt",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "相对当前时刻的剩余秒数"
+        },
+        {
+          "id": 55,
+          "name": "zombie_id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "僵尸类型 id（外键 → zombies.id）"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "run_save_plants",
+      "comment": "存档·场上植物",
+      "color": "#ffe6cc",
+      "x": 760,
+      "y": 40,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_save_plant_seq",
+          "unique": true,
+          "fields": [
+            57,
+            58
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 56,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 57,
+          "name": "save_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属存档"
+        },
+        {
+          "id": 58,
+          "name": "seq",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "阵型顺序（0 基）"
+        },
+        {
+          "id": 59,
+          "name": "plant_id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "植物 id（外键 → plants.id）"
+        },
+        {
+          "id": 60,
+          "name": "col",
+          "type": "TINYINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "列（0~8，网格 COLS=9）"
+        },
+        {
+          "id": 61,
+          "name": "row",
+          "type": "TINYINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "行（0~4，网格 ROWS=5）"
+        },
+        {
+          "id": 62,
+          "name": "hp",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "当前生命"
+        },
+        {
+          "id": 63,
+          "name": "state",
+          "type": "JSON",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "植物私有状态（结构随植物类型而变，对应 snapshot_state()）"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "run_save_zombies",
+      "comment": "存档·场上僵尸",
+      "color": "#ffe6cc",
+      "x": 760,
+      "y": 380,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_save_zombie_seq",
+          "unique": true,
+          "fields": [
+            65,
+            66
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 64,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 65,
+          "name": "save_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属存档"
+        },
+        {
+          "id": 66,
+          "name": "seq",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "出场顺序（0 基）"
+        },
+        {
+          "id": 67,
+          "name": "zombie_id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "僵尸类型 id（外键 → zombies.id）"
+        },
+        {
+          "id": 68,
+          "name": "row",
+          "type": "TINYINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所在行（0~4）"
+        },
+        {
+          "id": 69,
+          "name": "x",
+          "type": "DECIMAL",
+          "size": "10,3",
+          "default": "0.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "世界坐标 x"
+        },
+        {
+          "id": 70,
+          "name": "hp",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "当前生命"
+        },
+        {
+          "id": 71,
+          "name": "has_hat",
+          "type": "TINYINT",
+          "size": "1",
+          "default": "false",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "是否仍持有顶具"
+        },
+        {
+          "id": 72,
+          "name": "hat_hp",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "顶具剩余生命"
+        },
+        {
+          "id": 73,
+          "name": "state",
+          "type": "TINYINT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "状态机：0=Walk，1=Eat（瞬态不入档）"
+        },
+        {
+          "id": 74,
+          "name": "slow_t",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "0.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "剩余减速时长（秒）"
+        },
+        {
+          "id": 75,
+          "name": "bite_t",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "0.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "下次啃食倒计时（秒）"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "run_save_mowers",
+      "comment": "存档·割草机",
+      "color": "#ffe6cc",
+      "x": 760,
+      "y": 860,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_save_mower_row",
+          "unique": true,
+          "fields": [
+            77,
+            78
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 76,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 77,
+          "name": "save_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属存档"
+        },
+        {
+          "id": 78,
+          "name": "row",
+          "type": "TINYINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所在行（0~4，每行一个）"
+        },
+        {
+          "id": 79,
+          "name": "used",
+          "type": "TINYINT",
+          "size": "1",
+          "default": "false",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "是否已使用"
+        },
+        {
+          "id": 80,
+          "name": "running",
+          "type": "TINYINT",
+          "size": "1",
+          "default": "false",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "是否正在冲出"
+        },
+        {
+          "id": 81,
+          "name": "x",
+          "type": "DECIMAL",
+          "size": "10,3",
+          "default": "0.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "世界坐标 x"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "levels",
+      "comment": "关卡",
+      "color": "#fff2cc",
+      "x": 760,
+      "y": 1120,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 82,
+          "name": "id",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "关卡下标（0 基，0~39，与 GameConfig.LEVELS[i].id 对齐）"
+        },
+        {
+          "id": 83,
+          "name": "name",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "关卡显示名（如「第1关 · 初次防守」）"
+        },
+        {
+          "id": 84,
+          "name": "difficulty",
+          "type": "TINYINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "难度（1~10）"
+        },
+        {
+          "id": 85,
+          "name": "start_sun",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "初始阳光"
+        },
+        {
+          "id": 86,
+          "name": "scene",
+          "type": "ENUM",
+          "size": "'day','night'",
+          "default": "'day'",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "场景：day / night（缺省 day）"
+        },
+        {
+          "id": 87,
+          "name": "created_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "创建时间"
+        },
+        {
+          "id": 88,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "level_waves",
+      "comment": "关卡波次",
+      "color": "#fff2cc",
+      "x": 760,
+      "y": 1420,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_level_wave",
+          "unique": true,
+          "fields": [
+            90,
+            91
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 89,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 90,
+          "name": "level_id",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "关卡（外键 → levels.id）"
+        },
+        {
+          "id": 91,
+          "name": "wave_index",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "波次序号（0 基）"
+        },
+        {
+          "id": 92,
+          "name": "t",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "波次开始时间（秒）"
+        },
+        {
+          "id": 93,
+          "name": "huge",
+          "type": "TINYINT",
+          "size": "1",
+          "default": "false",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "是否大波（自动追加旗帜僵尸与横幅）"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "level_wave_zombies",
+      "comment": "波次僵尸明细",
+      "color": "#fff2cc",
+      "x": 760,
+      "y": 1660,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_wave_zombie_seq",
+          "unique": true,
+          "fields": [
+            95,
+            96
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 94,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 95,
+          "name": "wave_id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "所属波次"
+        },
+        {
+          "id": 96,
+          "name": "seq",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "波内顺序（0 基）"
+        },
+        {
+          "id": 97,
+          "name": "zombie_id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "僵尸类型 id（外键 → zombies.id）"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "plants",
+      "comment": "植物图鉴",
+      "color": "#e1d5e7",
+      "x": 1120,
+      "y": 40,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 98,
+          "name": "id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "植物 id（PLANT_ORDER 顺序，如 sunflower）"
+        },
+        {
+          "id": 99,
+          "name": "name",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "显示名（工程内为英文名，如 Sunflower）"
+        },
+        {
+          "id": 100,
+          "name": "cost",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "阳光价格"
+        },
+        {
+          "id": 101,
+          "name": "hp",
+          "type": "INT",
+          "size": "",
+          "default": "300",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "生命"
+        },
+        {
+          "id": 102,
+          "name": "recharge",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "0.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "卡片冷却（秒）"
+        },
+        {
+          "id": 103,
+          "name": "unlock_level",
+          "type": "INT",
+          "size": "",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "0=开局即拥有；否则为对应关序号（1 基）通关后解锁"
+        },
+        {
+          "id": 104,
+          "name": "card_order",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "卡槽展示顺序（PLANT_ORDER 下标）"
+        },
+        {
+          "id": 105,
+          "name": "created_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "创建时间"
+        },
+        {
+          "id": 106,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "plant_behaviors",
+      "comment": "植物行为参数",
+      "color": "#e1d5e7",
+      "x": 1120,
+      "y": 500,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 107,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 108,
+          "name": "plant_id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "植物 id（1:1，外键 → plants.id）"
+        },
+        {
+          "id": 109,
+          "name": "params",
+          "type": "JSON",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "行为参数（键随植物而异：fire_interval / damage / fuse / arm_time / splash_damage 等）"
+        },
+        {
+          "id": 110,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "zombies",
+      "comment": "僵尸图鉴",
+      "color": "#e1d5e7",
+      "x": 1120,
+      "y": 760,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 111,
+          "name": "id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "僵尸类型 id（ZOMBIES 的键，如 basic）"
+        },
+        {
+          "id": 112,
+          "name": "name",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "显示名（工程内为英文名）"
+        },
+        {
+          "id": 113,
+          "name": "hp",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "总生命"
+        },
+        {
+          "id": 114,
+          "name": "speed",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "移动速度（像素/秒）"
+        },
+        {
+          "id": 115,
+          "name": "zw",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "绘制宽度"
+        },
+        {
+          "id": 116,
+          "name": "zh",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "绘制高度"
+        },
+        {
+          "id": 117,
+          "name": "walk",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "行走动画精灵表名（外键 → sprite_sheets.name）"
+        },
+        {
+          "id": 118,
+          "name": "attack",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "啃食动画精灵表名（外键 → sprite_sheets.name）"
+        },
+        {
+          "id": 119,
+          "name": "dirty_walk",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "损毁态行走精灵表名（逻辑引用 sprite_sheets.name）"
+        },
+        {
+          "id": 120,
+          "name": "dirty_attack",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "损毁态啃食精灵表名（逻辑引用 sprite_sheets.name）"
+        },
+        {
+          "id": 121,
+          "name": "dirt_ratio",
+          "type": "DECIMAL",
+          "size": "6,4",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "切换损毁外观的生命比例阈值（0~1）"
+        },
+        {
+          "id": 122,
+          "name": "hat_hp",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "顶具（护甲段）独立生命，仅带顶具僵尸存在"
+        },
+        {
+          "id": 123,
+          "name": "hat_ratio",
+          "type": "DECIMAL",
+          "size": "6,4",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "顶具外观切换比例，仅带顶具僵尸存在"
+        },
+        {
+          "id": 124,
+          "name": "hat_removed_speed",
+          "type": "DECIMAL",
+          "size": "8,3",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "顶具被打掉后的速度，仅部分僵尸存在"
+        },
+        {
+          "id": 125,
+          "name": "hat_removed_walk",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "顶具被打掉后的行走精灵表名"
+        },
+        {
+          "id": 126,
+          "name": "hat_removed_attack",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "顶具被打掉后的啃食精灵表名"
+        },
+        {
+          "id": 127,
+          "name": "has_flag",
+          "type": "TINYINT",
+          "size": "1",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "是否持旗（仅 flag 僵尸）"
+        },
+        {
+          "id": 128,
+          "name": "jump",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "翻越动画精灵表名（仅 pole 僵尸）"
+        },
+        {
+          "id": 129,
+          "name": "after_jump_walk",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "翻越落地后行走精灵表名（仅 pole 僵尸）"
+        },
+        {
+          "id": 130,
+          "name": "rip",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "报纸撕碎动画精灵表名（仅 newspaper 僵尸）"
+        },
+        {
+          "id": 131,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "audio_tracks",
+      "comment": "音频资源",
+      "color": "#f8cecc",
+      "x": 1480,
+      "y": 40,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 132,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 133,
+          "name": "name",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "音效名 / BGM 名（SOUNDS 的键；BGM 名为 background）"
+        },
+        {
+          "id": 134,
+          "name": "kind",
+          "type": "ENUM",
+          "size": "'bgm','sfx'",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "类别：bgm / sfx"
+        },
+        {
+          "id": 135,
+          "name": "path",
+          "type": "VARCHAR",
+          "size": "255",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "res:// 资源路径"
+        },
+        {
+          "id": 136,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "audio_config",
+      "comment": "音频播放配置（单例）",
+      "color": "#f8cecc",
+      "x": 1480,
+      "y": 260,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 137,
+          "name": "id",
+          "type": "TINYINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "固定为 1（单例约束）"
+        },
+        {
+          "id": 138,
+          "name": "pool_size",
+          "type": "INT",
+          "size": "",
+          "default": "8",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "音效播放器对象池大小（POOL_SIZE）"
+        },
+        {
+          "id": 139,
+          "name": "sfx_volume_db",
+          "type": "DECIMAL",
+          "size": "6,2",
+          "default": "-6.00",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "音效基础增益（分贝，SFX_VOLUME_DB）"
+        },
+        {
+          "id": 140,
+          "name": "bgm_volume_db",
+          "type": "DECIMAL",
+          "size": "6,2",
+          "default": "-16.00",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "BGM 基础增益（分贝，BGM_VOLUME_DB）"
+        },
+        {
+          "id": 141,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "sprite_sheets",
+      "comment": "精灵表",
+      "color": "#f8cecc",
+      "x": 1480,
+      "y": 480,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 142,
+          "name": "name",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "精灵表名（SHEETS 的键）"
+        },
+        {
+          "id": 143,
+          "name": "w",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "单帧宽（像素）"
+        },
+        {
+          "id": 144,
+          "name": "h",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "单帧高（像素）"
+        },
+        {
+          "id": 145,
+          "name": "frames",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "帧数"
+        },
+        {
+          "id": 146,
+          "name": "d",
+          "type": "DECIMAL",
+          "size": "6,4",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "统一帧时长（秒）；仅当未单独维护 delays 时存在"
+        },
+        {
+          "id": 147,
+          "name": "src",
+          "type": "VARCHAR",
+          "size": "255",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "res:// 资源路径"
+        },
+        {
+          "id": 148,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "sprite_frame_delays",
+      "comment": "精灵表逐帧时长",
+      "color": "#f8cecc",
+      "x": 1480,
+      "y": 760,
+      "locked": false,
+      "collapsed": false,
+      "indices": [
+        {
+          "id": 0,
+          "name": "uk_sheet_frame",
+          "unique": true,
+          "fields": [
+            150,
+            151
+          ]
+        }
+      ],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 149,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 150,
+          "name": "sheet_name",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "精灵表名（外键 → sprite_sheets.name）"
+        },
+        {
+          "id": 151,
+          "name": "frame_index",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "帧下标（0 基）"
+        },
+        {
+          "id": 152,
+          "name": "delay_seconds",
+          "type": "DECIMAL",
+          "size": "6,4",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "该帧时长（秒）"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "static_textures",
+      "comment": "静态贴图",
+      "color": "#f8cecc",
+      "x": 1480,
+      "y": 960,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 153,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 154,
+          "name": "name",
+          "type": "VARCHAR",
+          "size": "64",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "素材名（STATIC_TEXTURES 的键）"
+        },
+        {
+          "id": 155,
+          "name": "path",
+          "type": "VARCHAR",
+          "size": "255",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "res:// 资源路径"
+        },
+        {
+          "id": 156,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "card_textures",
+      "comment": "卡片贴图",
+      "color": "#f8cecc",
+      "x": 1480,
+      "y": 1160,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 157,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 158,
+          "name": "plant_id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "植物 id（1:1，外键 → plants.id）"
+        },
+        {
+          "id": 159,
+          "name": "path",
+          "type": "VARCHAR",
+          "size": "255",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "res:// 资源路径"
+        },
+        {
+          "id": 160,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "card_regions",
+      "comment": "卡片切图区域",
+      "color": "#f8cecc",
+      "x": 1480,
+      "y": 1360,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 161,
+          "name": "id",
+          "type": "BIGINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": true,
+          "comment": "主键"
+        },
+        {
+          "id": 162,
+          "name": "plant_id",
+          "type": "VARCHAR",
+          "size": "32",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "植物 id（1:1，外键 → plants.id）"
+        },
+        {
+          "id": 163,
+          "name": "x",
+          "type": "DECIMAL",
+          "size": "8,2",
+          "default": "0.00",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "切图起点 x"
+        },
+        {
+          "id": 164,
+          "name": "y",
+          "type": "DECIMAL",
+          "size": "8,2",
+          "default": "0.00",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "切图起点 y"
+        },
+        {
+          "id": 165,
+          "name": "w",
+          "type": "DECIMAL",
+          "size": "8,2",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "切图宽"
+        },
+        {
+          "id": 166,
+          "name": "h",
+          "type": "DECIMAL",
+          "size": "8,2",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "切图高"
+        },
+        {
+          "id": 167,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "game_rules",
+      "comment": "全局规则常量（单例）",
+      "color": "#d0cee2",
+      "x": 1840,
+      "y": 40,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 168,
+          "name": "id",
+          "type": "TINYINT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "固定为 1（单例约束）"
+        },
+        {
+          "id": 169,
+          "name": "total_levels",
+          "type": "INT",
+          "size": "",
+          "default": "40",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "关卡总数（30 主关 + 10 后日谈）"
+        },
+        {
+          "id": 170,
+          "name": "run_slot_min",
+          "type": "TINYINT",
+          "size": "",
+          "default": "1",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "存档槽位下限（RUN_SLOT_MIN）"
+        },
+        {
+          "id": 171,
+          "name": "run_slot_max",
+          "type": "TINYINT",
+          "size": "",
+          "default": "3",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "存档槽位上限（RUN_SLOT_MAX）"
+        },
+        {
+          "id": 172,
+          "name": "snapshot_version",
+          "type": "INT",
+          "size": "",
+          "default": "1",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "当前快照结构版本（SNAPSHOT_VERSION）"
+        },
+        {
+          "id": 173,
+          "name": "grid_cols",
+          "type": "TINYINT",
+          "size": "",
+          "default": "9",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "网格列数（COLS）"
+        },
+        {
+          "id": 174,
+          "name": "grid_rows",
+          "type": "TINYINT",
+          "size": "",
+          "default": "5",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "网格行数（ROWS）"
+        },
+        {
+          "id": 175,
+          "name": "wave_unit_gap",
+          "type": "DECIMAL",
+          "size": "6,3",
+          "default": "0.900",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "同波内单僵尸间隔（秒，WAVE_UNIT_GAP）"
+        },
+        {
+          "id": 176,
+          "name": "zombie_bite_interval",
+          "type": "DECIMAL",
+          "size": "6,3",
+          "default": "0.500",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "啃食间隔（秒，ZOMBIE_BITE_INTERVAL）"
+        },
+        {
+          "id": 177,
+          "name": "zombie_bite_damage",
+          "type": "INT",
+          "size": "",
+          "default": "34",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "每口啃食伤害（ZOMBIE_BITE_DAMAGE）"
+        },
+        {
+          "id": 178,
+          "name": "slow_factor",
+          "type": "DECIMAL",
+          "size": "6,4",
+          "default": "0.5000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "寒冰减速倍率（SLOW_FACTOR）"
+        },
+        {
+          "id": 179,
+          "name": "slow_duration",
+          "type": "DECIMAL",
+          "size": "6,3",
+          "default": "5.000",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "减速持续时长（秒，SLOW_DURATION）"
+        },
+        {
+          "id": 180,
+          "name": "seed_slot_base",
+          "type": "TINYINT",
+          "size": "",
+          "default": "5",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "卡槽基础数（SEED_SLOT_BASE）"
+        },
+        {
+          "id": 181,
+          "name": "seed_slot_step",
+          "type": "TINYINT",
+          "size": "",
+          "default": "4",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "卡槽每增长步长（SEED_SLOT_STEP）"
+        },
+        {
+          "id": 182,
+          "name": "seed_slot_max",
+          "type": "TINYINT",
+          "size": "",
+          "default": "10",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "卡槽上限（SEED_SLOT_MAX）"
+        },
+        {
+          "id": 183,
+          "name": "seed_select_from_level",
+          "type": "INT",
+          "size": "",
+          "default": "7",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "从此关序号（1 基）起需先选卡（SEED_SELECT_FROM_LEVEL）"
+        },
+        {
+          "id": 184,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "name": "error_codes",
+      "comment": "业务错误码字典",
+      "color": "#d0cee2",
+      "x": 1840,
+      "y": 740,
+      "locked": false,
+      "collapsed": false,
+      "indices": [],
+      "uniqueConstraints": [],
+      "fields": [
+        {
+          "id": 185,
+          "name": "code",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "业务错误码（契约 ErrorCode 取值）"
+        },
+        {
+          "id": 186,
+          "name": "http_status",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "对应 HTTP 状态码"
+        },
+        {
+          "id": 187,
+          "name": "default_msg",
+          "type": "VARCHAR",
+          "size": "128",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "默认提示信息"
+        },
+        {
+          "id": 188,
+          "name": "description",
+          "type": "VARCHAR",
+          "size": "255",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "错误说明"
+        },
+        {
+          "id": 189,
+          "name": "updated_at",
+          "type": "DATETIME",
+          "size": "",
+          "default": "current_timestamp()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "更新时间"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": 0,
+      "name": "fk_player_settings_players",
+      "startTableId": 1,
+      "endTableId": 0,
+      "startFieldId": 5,
+      "endFieldId": 0,
+      "fields": [
+        {
+          "startFieldId": 5,
+          "endFieldId": 0
+        }
+      ],
+      "cardinality": "one_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 1,
+      "name": "fk_player_progress_players",
+      "startTableId": 2,
+      "endTableId": 0,
+      "startFieldId": 11,
+      "endFieldId": 0,
+      "fields": [
+        {
+          "startFieldId": 11,
+          "endFieldId": 0
+        }
+      ],
+      "cardinality": "one_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 2,
+      "name": "fk_player_level_progress_players",
+      "startTableId": 3,
+      "endTableId": 0,
+      "startFieldId": 15,
+      "endFieldId": 0,
+      "fields": [
+        {
+          "startFieldId": 15,
+          "endFieldId": 0
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 3,
+      "name": "fk_player_level_progress_levels",
+      "startTableId": 3,
+      "endTableId": 13,
+      "startFieldId": 16,
+      "endFieldId": 82,
+      "fields": [
+        {
+          "startFieldId": 16,
+          "endFieldId": 82
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 4,
+      "name": "fk_level_clear_events_players",
+      "startTableId": 4,
+      "endTableId": 0,
+      "startFieldId": 21,
+      "endFieldId": 0,
+      "fields": [
+        {
+          "startFieldId": 21,
+          "endFieldId": 0
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 5,
+      "name": "fk_level_clear_events_levels",
+      "startTableId": 4,
+      "endTableId": 13,
+      "startFieldId": 22,
+      "endFieldId": 82,
+      "fields": [
+        {
+          "startFieldId": 22,
+          "endFieldId": 82
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 6,
+      "name": "fk_run_saves_players",
+      "startTableId": 5,
+      "endTableId": 0,
+      "startFieldId": 26,
+      "endFieldId": 0,
+      "fields": [
+        {
+          "startFieldId": 26,
+          "endFieldId": 0
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 7,
+      "name": "fk_run_saves_levels",
+      "startTableId": 5,
+      "endTableId": 13,
+      "startFieldId": 29,
+      "endFieldId": 82,
+      "fields": [
+        {
+          "startFieldId": 29,
+          "endFieldId": 82
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 8,
+      "name": "fk_run_save_cards_saves",
+      "startTableId": 6,
+      "endTableId": 5,
+      "startFieldId": 39,
+      "endFieldId": 25,
+      "fields": [
+        {
+          "startFieldId": 39,
+          "endFieldId": 25
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 9,
+      "name": "fk_run_save_cards_plants",
+      "startTableId": 6,
+      "endTableId": 16,
+      "startFieldId": 41,
+      "endFieldId": 98,
+      "fields": [
+        {
+          "startFieldId": 41,
+          "endFieldId": 98
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 10,
+      "name": "fk_run_save_card_cooldowns_saves",
+      "startTableId": 7,
+      "endTableId": 5,
+      "startFieldId": 43,
+      "endFieldId": 25,
+      "fields": [
+        {
+          "startFieldId": 43,
+          "endFieldId": 25
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 11,
+      "name": "fk_run_save_card_cooldowns_plants",
+      "startTableId": 7,
+      "endTableId": 16,
+      "startFieldId": 44,
+      "endFieldId": 98,
+      "fields": [
+        {
+          "startFieldId": 44,
+          "endFieldId": 98
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 12,
+      "name": "fk_run_save_wave_states_saves",
+      "startTableId": 8,
+      "endTableId": 5,
+      "startFieldId": 47,
+      "endFieldId": 25,
+      "fields": [
+        {
+          "startFieldId": 47,
+          "endFieldId": 25
+        }
+      ],
+      "cardinality": "one_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 13,
+      "name": "fk_run_save_pending_spawns_wave_states",
+      "startTableId": 9,
+      "endTableId": 8,
+      "startFieldId": 52,
+      "endFieldId": 46,
+      "fields": [
+        {
+          "startFieldId": 52,
+          "endFieldId": 46
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 14,
+      "name": "fk_run_save_pending_spawns_zombies",
+      "startTableId": 9,
+      "endTableId": 18,
+      "startFieldId": 55,
+      "endFieldId": 111,
+      "fields": [
+        {
+          "startFieldId": 55,
+          "endFieldId": 111
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 15,
+      "name": "fk_run_save_plants_saves",
+      "startTableId": 10,
+      "endTableId": 5,
+      "startFieldId": 57,
+      "endFieldId": 25,
+      "fields": [
+        {
+          "startFieldId": 57,
+          "endFieldId": 25
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 16,
+      "name": "fk_run_save_plants_plants",
+      "startTableId": 10,
+      "endTableId": 16,
+      "startFieldId": 59,
+      "endFieldId": 98,
+      "fields": [
+        {
+          "startFieldId": 59,
+          "endFieldId": 98
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 17,
+      "name": "fk_run_save_zombies_saves",
+      "startTableId": 11,
+      "endTableId": 5,
+      "startFieldId": 65,
+      "endFieldId": 25,
+      "fields": [
+        {
+          "startFieldId": 65,
+          "endFieldId": 25
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 18,
+      "name": "fk_run_save_zombies_zombies",
+      "startTableId": 11,
+      "endTableId": 18,
+      "startFieldId": 67,
+      "endFieldId": 111,
+      "fields": [
+        {
+          "startFieldId": 67,
+          "endFieldId": 111
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 19,
+      "name": "fk_run_save_mowers_saves",
+      "startTableId": 12,
+      "endTableId": 5,
+      "startFieldId": 77,
+      "endFieldId": 25,
+      "fields": [
+        {
+          "startFieldId": 77,
+          "endFieldId": 25
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 20,
+      "name": "fk_level_waves_levels",
+      "startTableId": 14,
+      "endTableId": 13,
+      "startFieldId": 90,
+      "endFieldId": 82,
+      "fields": [
+        {
+          "startFieldId": 90,
+          "endFieldId": 82
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 21,
+      "name": "fk_level_wave_zombies_waves",
+      "startTableId": 15,
+      "endTableId": 14,
+      "startFieldId": 95,
+      "endFieldId": 89,
+      "fields": [
+        {
+          "startFieldId": 95,
+          "endFieldId": 89
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 22,
+      "name": "fk_level_wave_zombies_zombies",
+      "startTableId": 15,
+      "endTableId": 18,
+      "startFieldId": 97,
+      "endFieldId": 111,
+      "fields": [
+        {
+          "startFieldId": 97,
+          "endFieldId": 111
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 23,
+      "name": "fk_plant_behaviors_plants",
+      "startTableId": 17,
+      "endTableId": 16,
+      "startFieldId": 108,
+      "endFieldId": 98,
+      "fields": [
+        {
+          "startFieldId": 108,
+          "endFieldId": 98
+        }
+      ],
+      "cardinality": "one_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 24,
+      "name": "fk_card_textures_plants",
+      "startTableId": 24,
+      "endTableId": 16,
+      "startFieldId": 158,
+      "endFieldId": 98,
+      "fields": [
+        {
+          "startFieldId": 158,
+          "endFieldId": 98
+        }
+      ],
+      "cardinality": "one_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 25,
+      "name": "fk_card_regions_plants",
+      "startTableId": 25,
+      "endTableId": 16,
+      "startFieldId": 162,
+      "endFieldId": 98,
+      "fields": [
+        {
+          "startFieldId": 162,
+          "endFieldId": 98
+        }
+      ],
+      "cardinality": "one_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 26,
+      "name": "fk_sprite_frame_delays_sheets",
+      "startTableId": 22,
+      "endTableId": 21,
+      "startFieldId": 150,
+      "endFieldId": 142,
+      "fields": [
+        {
+          "startFieldId": 150,
+          "endFieldId": 142
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": 27,
+      "name": "fk_zombies_walk_sheets",
+      "startTableId": 18,
+      "endTableId": 21,
+      "startFieldId": 117,
+      "endFieldId": 142,
+      "fields": [
+        {
+          "startFieldId": 117,
+          "endFieldId": 142
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": 28,
+      "name": "fk_zombies_attack_sheets",
+      "startTableId": 18,
+      "endTableId": 21,
+      "startFieldId": 118,
+      "endFieldId": 142,
+      "fields": [
+        {
+          "startFieldId": 118,
+          "endFieldId": 142
+        }
+      ],
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    }
+  ],
+  "notes": [],
+  "subjectAreas": [],
+  "views": [],
+  "types": [],
+  "enums": []
+}

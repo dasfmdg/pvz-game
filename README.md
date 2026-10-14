@@ -71,7 +71,29 @@ tools/headless_sim.*        无窗口整局模拟（自动采集阳光 + 布阵�
 tools/entity_test.*         无窗口实体层单元校验（87 项断言：顶具/破损/减速/各类植物行为）
 tools/screen_test.*         无窗口界面层校验（182 项断言：路由、选卡、存档、30 关数据与解锁表、图鉴、设置）
 tools/level_sim.*           无窗口 30 关逐关模拟（逐关自动布阵打到结束，验证波次/胜负链路不卡死）
+openapi.yaml                后端接口契约（OpenAPI 3.0.3，14 path / 18 operation / 27 schema）
+pvz_game.dbml               数据库物理结构（DBML，目标 MySQL 8.0，28 表 / 29 外键）
+pvz_game.json               同上的 drawDB 兼容 JSON（可导入 drawDB 可视化）
+backend/                    Mock 后端（FastAPI，按 openapi.yaml 逐接口实现）
 ```
+
+## 后端接口与数据库结构
+
+本工程为纯离线单机游戏，源码内不含任何 HTTP 调用。为便于扩展与联调，额外补充了一套「可 Mock 的后端」与配套的数据库物理结构：
+
+- **接口契约**：[openapi.yaml](openapi.yaml)（OpenAPI 3.0.3，14 path / 18 operation / 27 schema）。统一响应体 `{ "code": 0, "msg": "ok", "data": ... }`，无登录鉴权（进度按单机玩家维度处理）；关卡下标 **0 基**、存档槽位 **1~3**、字段名全部 snake_case。
+- **Mock 后端**：`backend/`（FastAPI + uvicorn，端点统一挂 `/api` 前缀），按上述契约逐接口返回，用于 Apifox Mock / 前端联调。
+- **数据库物理结构**：[pvz_game.dbml](pvz_game.dbml)（DBML，目标 MySQL 8.0，28 张表 / 29 条外键）与 [pvz_game.json](pvz_game.json)（同内容的 drawDB 兼容 JSON，可导入 drawDB 可视化）。按模块划分：玩家与设置、进度、存档快照、关卡配置、植物图鉴、僵尸图鉴、资源（音频 / 精灵）、全局规则与错误码、对局事件与运营指标。
+
+```bash
+# 启动 Mock 后端（默认对齐契约的 http://localhost:3000/api）
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --port 3000
+# 交互式接口文档：http://localhost:3000/docs
+```
+
+> 数据来源为工程真实数据模型（`save_manager.gd` / `game_config.gd` / `sound_manager.gd` / `sprite_library.gd` / `sprite_meta.gd`）；工程契约未定义订阅 / 交易 / 获客等商业数据源，故未建对应表。
 
 ## 校验与测试
 

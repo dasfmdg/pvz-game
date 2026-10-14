@@ -1,0 +1,502 @@
+// ============================================================================
+// 植物大战僵尸 · Godot 版（pvz-game）后端数据库物理结构
+// 目标数据库：MySQL 8.0
+//
+// 契约来源：openapi.yaml（OpenAPI 3.0.3，14 path / 18 operation / 27 schema）
+// 事实来源：scripts/autoload/save_manager.gd、game_config.gd、sound_manager.gd、
+//           sprite_library.gd、scripts/data/sprite_meta.gd
+//
+// 全局约定：
+//   - 字段名一律 snake_case；音量取值 0.000~1.000（浮点，非整数）
+//   - 关卡下标 0 基，取值 0~39（30 主关 + 10 后日谈）
+//   - 存档槽位 1~3；快照结构版本恒为 1（SNAPSHOT_VERSION）
+//   - 主键统一 bigint 自增（除天然键：levels.id 为 0 基 int；plants/zombies/sprite_sheets 用业务 id 字符串）
+//   - 时间统一 datetime；默认值函数名小写（current_timestamp()）；布尔值小写 true / false
+// ============================================================================
+
+
+// ---------------------------------------------------------------------------
+// 枚举
+// ---------------------------------------------------------------------------
+Enum scene_type {
+  day
+  night
+}
+
+Enum audio_kind {
+  bgm
+  sfx
+}
+
+
+// ===========================================================================
+// 模块 1 · 玩家与设置
+// ===========================================================================
+
+Table players [note: '玩家'] {
+  id bigint [pk, increment, note: '主键']
+  player_uid varchar(64) [not null, unique, note: '单机玩家标识（工程无登录鉴权，按设备/玩家维度）']
+  created_at datetime [not null, default: `current_timestamp()`, note: '创建时间']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间（更新时自动刷新）']
+
+  Note: '单机玩家维度。工程内无账号/鉴权（契约明确「按单机玩家维度处理」），本表为进度、存档、事件提供归属主体。'
+}
+
+Table player_settings [note: '玩家设置'] {
+  id bigint [pk, increment, note: '主键']
+  player_id bigint [not null, unique, note: '所属玩家（1:1）']
+  bgm_volume decimal(4,3) [not null, default: 0.800, note: '背景音乐音量，0.000~1.000（默认 DEFAULT_BGM_VOLUME=0.8）']
+  sfx_volume decimal(4,3) [not null, default: 1.000, note: '音效音量，0.000~1.000（默认 DEFAULT_SFX_VOLUME=1.0）']
+  muted tinyint(1) [not null, default: false, note: '是否静音（默认 DEFAULT_MUTED=false）']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 save_manager.gd 的 settings 分区（GET/PUT /settings）。'
+}
+
+
+// ===========================================================================
+// 模块 2 · 进度
+// ===========================================================================
+
+Table player_progress [note: '玩家总进度'] {
+  id bigint [pk, increment, note: '主键']
+  player_id bigint [not null, unique, note: '所属玩家（1:1）']
+  unlocked_level int [not null, default: 0, note: '已解锁到的最大关卡下标（0 基，0~39）']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 save_manager.gd 的 progress.unlocked_level；is_unlocked(i) == i <= unlocked_level。'
+}
+
+Table player_level_progress [note: '玩家分关进度'] {
+  id bigint [pk, increment, note: '主键']
+  player_id bigint [not null, note: '所属玩家']
+  level_index int [not null, note: '关卡下标（0 基，外键 → levels.id）']
+  cleared tinyint(1) [not null, default: false, note: '是否已通关']
+  best_kills int [not null, default: 0, note: '该关历史最佳击杀数']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  indexes {
+    (player_id, level_index) [unique, name: 'uk_player_level']
+  }
+
+  Note: '对应 progress.levels（{"<关卡号>": {cleared, best_kills}}）；仅落有记录的关卡（已通关或 best_kills>0）。'
+}
+
+
+// ===========================================================================
+// 模块 3 · 存档快照（单局）
+// ===========================================================================
+
+Table run_saves [note: '单局存档（快照）'] {
+  id bigint [pk, increment, note: '主键']
+  player_id bigint [not null, note: '所属玩家']
+  slot tinyint [not null, note: '存档槽位，1~3（RUN_SLOT_MIN~RUN_SLOT_MAX）']
+  snapshot_version int [not null, default: 1, note: '快照结构版本，恒为 1（SNAPSHOT_VERSION），否则拒绝保存']
+  level_index int [not null, note: '所在关卡下标（0 基，外键 → levels.id）']
+  level_name varchar(64) [not null, note: '关卡显示名（冗余，供存档列表直接展示）']
+  time decimal(8,3) [not null, default: 0.000, note: '对局已进行时间（秒）']
+  sun int [not null, default: 0, note: '当前阳光']
+  killed int [not null, default: 0, note: '当前击杀数']
+  sky_sun_timer decimal(8,3) [not null, default: 0.000, note: '天降阳光计时器剩余（秒）']
+  saved_at datetime [not null, note: '保存时间（契约的 ISO 8601 → datetime）']
+  created_at datetime [not null, default: `current_timestamp()`, note: '创建时间']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  indexes {
+    (player_id, slot) [unique, name: 'uk_player_slot']
+  }
+
+  Note: '对应 SaveSlot / SaveDetail 摘要 + RunSnapshot 顶层标量。一槽一档，PUT 为覆盖写。'
+}
+
+Table run_save_cards [note: '存档·携带卡片植物'] {
+  id bigint [pk, increment, note: '主键']
+  save_id bigint [not null, note: '所属存档']
+  seq int [not null, note: '卡槽顺序（0 基）']
+  plant_id varchar(32) [not null, note: '植物 id（外键 → plants.id）']
+
+  indexes {
+    (save_id, seq) [unique, name: 'uk_save_card_seq']
+  }
+
+  Note: '对应 RunSnapshot.level_plants（本关携带的卡片植物，最多 10 个）。'
+}
+
+Table run_save_card_cooldowns [note: '存档·卡片冷却'] {
+  id bigint [pk, increment, note: '主键']
+  save_id bigint [not null, note: '所属存档']
+  plant_id varchar(32) [not null, note: '植物 id（外键 → plants.id）']
+  cooldown_seconds decimal(8,3) [not null, default: 0.000, note: '该卡剩余冷却（秒）']
+
+  indexes {
+    (save_id, plant_id) [unique, name: 'uk_save_cd_plant']
+  }
+
+  Note: '对应 RunSnapshot.card_cooldowns（键为植物 id）。'
+}
+
+Table run_save_wave_states [note: '存档·波次状态'] {
+  id bigint [pk, increment, note: '主键']
+  save_id bigint [not null, unique, note: '所属存档（1:1）']
+  wave_index int [not null, default: 0, note: '当前波次下标']
+  early_trigger_at decimal(8,3) [not null, default: -1.000, note: '提前触发时刻；-1 表示未触发提前等待']
+  lane_cursor int [not null, default: 0, note: '上一只僵尸落位行（0~4）']
+
+  Note: '对应 WaveManager.to_snapshot() 的标量部分。'
+}
+
+Table run_save_pending_spawns [note: '存档·待出场僵尸'] {
+  id bigint [pk, increment, note: '主键']
+  wave_state_id bigint [not null, note: '所属波次状态']
+  seq int [not null, note: '队列顺序（0 基）']
+  dt decimal(8,3) [not null, note: '相对当前时刻的剩余秒数']
+  zombie_id varchar(32) [not null, note: '僵尸类型 id（外键 → zombies.id）']
+
+  indexes {
+    (wave_state_id, seq) [unique, name: 'uk_pending_seq']
+  }
+
+  Note: '对应 WaveSnapshot.pending（最多 20 条）。'
+}
+
+Table run_save_plants [note: '存档·场上植物'] {
+  id bigint [pk, increment, note: '主键']
+  save_id bigint [not null, note: '所属存档']
+  seq int [not null, note: '阵型顺序（0 基）']
+  plant_id varchar(32) [not null, note: '植物 id（外键 → plants.id）']
+  col tinyint [not null, note: '列（0~8，网格 COLS=9）']
+  row tinyint [not null, note: '行（0~4，网格 ROWS=5）']
+  hp int [not null, default: 0, note: '当前生命']
+  state json [null, note: '植物私有状态（结构随植物类型而变，对应 snapshot_state()）']
+
+  indexes {
+    (save_id, seq) [unique, name: 'uk_save_plant_seq']
+  }
+
+  Note: '对应 GridManager.to_snapshot() 的单元项（最多 45 个）。'
+}
+
+Table run_save_zombies [note: '存档·场上僵尸'] {
+  id bigint [pk, increment, note: '主键']
+  save_id bigint [not null, note: '所属存档']
+  seq int [not null, note: '出场顺序（0 基）']
+  zombie_id varchar(32) [not null, note: '僵尸类型 id（外键 → zombies.id）']
+  row tinyint [not null, note: '所在行（0~4）']
+  x decimal(10,3) [not null, default: 0.000, note: '世界坐标 x']
+  hp int [not null, default: 0, note: '当前生命']
+  has_hat tinyint(1) [not null, default: false, note: '是否仍持有顶具']
+  hat_hp int [not null, default: 0, note: '顶具剩余生命']
+  state tinyint [not null, default: 0, note: '状态机：0=Walk，1=Eat（瞬态不入档）']
+  slow_t decimal(8,3) [not null, default: 0.000, note: '剩余减速时长（秒）']
+  bite_t decimal(8,3) [not null, default: 0.000, note: '下次啃食倒计时（秒）']
+
+  indexes {
+    (save_id, seq) [unique, name: 'uk_save_zombie_seq']
+  }
+
+  Note: '对应 ZombieBase.to_snapshot()（最多 200 个）。'
+}
+
+Table run_save_mowers [note: '存档·割草机'] {
+  id bigint [pk, increment, note: '主键']
+  save_id bigint [not null, note: '所属存档']
+  row tinyint [not null, note: '所在行（0~4，每行一个）']
+  used tinyint(1) [not null, default: false, note: '是否已使用']
+  running tinyint(1) [not null, default: false, note: '是否正在冲出']
+  x decimal(10,3) [not null, default: 0.000, note: '世界坐标 x']
+
+  indexes {
+    (save_id, row) [unique, name: 'uk_save_mower_row']
+  }
+
+  Note: '对应 LawnMower.to_snapshot()（固定 5 条，与 ROWS=5 对应）。'
+}
+
+
+// ===========================================================================
+// 模块 4 · 关卡配置
+// ===========================================================================
+
+Table levels [note: '关卡'] {
+  id int [pk, note: '关卡下标（0 基，0~39，与 GameConfig.LEVELS[i].id 对齐）']
+  name varchar(64) [not null, note: '关卡显示名（如「第1关 · 初次防守」）']
+  difficulty tinyint [not null, note: '难度（1~10）']
+  start_sun int [not null, default: 0, note: '初始阳光']
+  scene scene_type [not null, default: 'day', note: '场景：day / night（缺省 day）']
+  created_at datetime [not null, default: `current_timestamp()`, note: '创建时间']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 GameConfig.LEVELS（共 40 关）。可用植物 / 卡槽上限 / 是否需选卡为派生值（见 game_rules），不冗余落库。'
+}
+
+Table level_waves [note: '关卡波次'] {
+  id bigint [pk, increment, note: '主键']
+  level_id int [not null, note: '关卡（外键 → levels.id）']
+  wave_index int [not null, note: '波次序号（0 基）']
+  t decimal(8,3) [not null, note: '波次开始时间（秒）']
+  huge tinyint(1) [not null, default: false, note: '是否大波（自动追加旗帜僵尸与横幅）']
+
+  indexes {
+    (level_id, wave_index) [unique, name: 'uk_level_wave']
+  }
+
+  Note: '对应 LEVELS[i].waves[]（每关 1~12 波）。波内单僵尸间隔取 game_rules.wave_unit_gap。'
+}
+
+Table level_wave_zombies [note: '波次僵尸明细'] {
+  id bigint [pk, increment, note: '主键']
+  wave_id bigint [not null, note: '所属波次']
+  seq int [not null, note: '波内顺序（0 基）']
+  zombie_id varchar(32) [not null, note: '僵尸类型 id（外键 → zombies.id）']
+
+  indexes {
+    (wave_id, seq) [unique, name: 'uk_wave_zombie_seq']
+  }
+
+  Note: '对应 waves[].z 数组（每波 1~20 只）。'
+}
+
+
+// ===========================================================================
+// 模块 5 · 植物图鉴
+// ===========================================================================
+
+Table plants [note: '植物图鉴'] {
+  id varchar(32) [pk, note: '植物 id（PLANT_ORDER 顺序，如 sunflower）']
+  name varchar(64) [not null, note: '显示名（工程内为英文名，如 Sunflower）']
+  cost int [not null, default: 0, note: '阳光价格']
+  hp int [not null, default: 300, note: '生命']
+  recharge decimal(8,3) [not null, default: 0.000, note: '卡片冷却（秒）']
+  unlock_level int [not null, default: 0, note: '0=开局即拥有；否则为对应关序号（1 基）通关后解锁']
+  card_order int [not null, note: '卡槽展示顺序（PLANT_ORDER 下标）']
+  created_at datetime [not null, default: `current_timestamp()`, note: '创建时间']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 GameConfig.PLANTS + PLANT_UNLOCK + PLANT_ORDER（共 13 种）。'
+}
+
+Table plant_behaviors [note: '植物行为参数'] {
+  id bigint [pk, increment, note: '主键']
+  plant_id varchar(32) [not null, unique, note: '植物 id（1:1，外键 → plants.id）']
+  params json [not null, note: '行为参数（键随植物而异：fire_interval / damage / fuse / arm_time / splash_damage 等）']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 GameConfig.PLANT_BEHAVIOR（各植物参数异构，故以 JSON 落库）。'
+}
+
+
+// ===========================================================================
+// 模块 6 · 僵尸图鉴
+// ===========================================================================
+
+Table zombies [note: '僵尸图鉴'] {
+  id varchar(32) [pk, note: '僵尸类型 id（ZOMBIES 的键，如 basic）']
+  name varchar(64) [not null, note: '显示名（工程内为英文名）']
+  hp int [not null, note: '总生命']
+  speed decimal(8,3) [not null, note: '移动速度（像素/秒）']
+  zw decimal(8,3) [not null, note: '绘制宽度']
+  zh decimal(8,3) [not null, note: '绘制高度']
+  walk varchar(64) [not null, note: '行走动画精灵表名（外键 → sprite_sheets.name）']
+  attack varchar(64) [not null, note: '啃食动画精灵表名（外键 → sprite_sheets.name）']
+  dirty_walk varchar(64) [null, note: '损毁态行走精灵表名（逻辑引用 sprite_sheets.name）']
+  dirty_attack varchar(64) [null, note: '损毁态啃食精灵表名（逻辑引用 sprite_sheets.name）']
+  dirt_ratio decimal(6,4) [null, note: '切换损毁外观的生命比例阈值（0~1）']
+  hat_hp int [null, note: '顶具（护甲段）独立生命，仅带顶具僵尸存在']
+  hat_ratio decimal(6,4) [null, note: '顶具外观切换比例，仅带顶具僵尸存在']
+  hat_removed_speed decimal(8,3) [null, note: '顶具被打掉后的速度，仅部分僵尸存在']
+  hat_removed_walk varchar(64) [null, note: '顶具被打掉后的行走精灵表名']
+  hat_removed_attack varchar(64) [null, note: '顶具被打掉后的啃食精灵表名']
+  has_flag tinyint(1) [null, note: '是否持旗（仅 flag 僵尸）']
+  jump varchar(64) [null, note: '翻越动画精灵表名（仅 pole 僵尸）']
+  after_jump_walk varchar(64) [null, note: '翻越落地后行走精灵表名（仅 pole 僵尸）']
+  rip varchar(64) [null, note: '报纸撕碎动画精灵表名（仅 newspaper 僵尸）']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 GameConfig.ZOMBIES（8 类：basic/cone/bucket/football/door/flag/pole/newspaper）。源码无 damage / has_hat 字段（啃食伤害为全局常量 zombie_bite_damage）。'
+}
+
+
+// ===========================================================================
+// 模块 7 · 资源（音频 / 精灵）
+// ===========================================================================
+
+Table audio_tracks [note: '音频资源'] {
+  id bigint [pk, increment, note: '主键']
+  name varchar(64) [not null, unique, note: '音效名 / BGM 名（SOUNDS 的键；BGM 名为 background）']
+  kind audio_kind [not null, note: '类别：bgm / sfx']
+  path varchar(255) [not null, note: 'res:// 资源路径']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 SoundManager.SOUNDS（10 条 sfx）+ BGM_PATH（1 条 bgm），共 11 行。'
+}
+
+Table audio_config [note: '音频播放配置（单例）'] {
+  id tinyint [pk, note: '固定为 1（单例约束）']
+  pool_size int [not null, default: 8, note: '音效播放器对象池大小（POOL_SIZE）']
+  sfx_volume_db decimal(6,2) [not null, default: -6.00, note: '音效基础增益（分贝，SFX_VOLUME_DB）']
+  bgm_volume_db decimal(6,2) [not null, default: -16.00, note: 'BGM 基础增益（分贝，BGM_VOLUME_DB）']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 SoundManager 的播放器常量，单行配置。'
+}
+
+Table sprite_sheets [note: '精灵表'] {
+  name varchar(64) [pk, note: '精灵表名（SHEETS 的键）']
+  w int [not null, note: '单帧宽（像素）']
+  h int [not null, note: '单帧高（像素）']
+  frames int [not null, note: '帧数']
+  d decimal(6,4) [null, note: '统一帧时长（秒）；仅当未单独维护 delays 时存在']
+  src varchar(255) [not null, note: 'res:// 资源路径']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 SpriteMeta.SHEETS（横向精灵表，共 46 张）。d 与 delays 二选一。'
+}
+
+Table sprite_frame_delays [note: '精灵表逐帧时长'] {
+  id bigint [pk, increment, note: '主键']
+  sheet_name varchar(64) [not null, note: '精灵表名（外键 → sprite_sheets.name）']
+  frame_index int [not null, note: '帧下标（0 基）']
+  delay_seconds decimal(6,4) [not null, note: '该帧时长（秒）']
+
+  indexes {
+    (sheet_name, frame_index) [unique, name: 'uk_sheet_frame']
+  }
+
+  Note: '对应 SHEETS[*].delays；无 delays 的精灵表按 d 推导，不落本表。'
+}
+
+Table static_textures [note: '静态贴图'] {
+  id bigint [pk, increment, note: '主键']
+  name varchar(64) [not null, unique, note: '素材名（STATIC_TEXTURES 的键）']
+  path varchar(255) [not null, note: 'res:// 资源路径']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 SpriteLibrary.STATIC_TEXTURES。'
+}
+
+Table card_textures [note: '卡片贴图'] {
+  id bigint [pk, increment, note: '主键']
+  plant_id varchar(32) [not null, unique, note: '植物 id（1:1，外键 → plants.id）']
+  path varchar(255) [not null, note: 'res:// 资源路径']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 SpriteLibrary.CARD_TEXTURES（键为植物 id）。'
+}
+
+Table card_regions [note: '卡片切图区域'] {
+  id bigint [pk, increment, note: '主键']
+  plant_id varchar(32) [not null, unique, note: '植物 id（1:1，外键 → plants.id）']
+  x decimal(8,2) [not null, default: 0.00, note: '切图起点 x']
+  y decimal(8,2) [not null, default: 0.00, note: '切图起点 y']
+  w decimal(8,2) [not null, note: '切图宽']
+  h decimal(8,2) [not null, note: '切图高']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '对应 SpriteLibrary.CARD_REGIONS（Rect2(x, y, w, h)，键为植物 id）。'
+}
+
+
+// ===========================================================================
+// 模块 8 · 全局规则与错误码（运维）
+// ===========================================================================
+
+Table game_rules [note: '全局规则常量（单例）'] {
+  id tinyint [pk, note: '固定为 1（单例约束）']
+  total_levels int [not null, default: 40, note: '关卡总数（30 主关 + 10 后日谈）']
+  run_slot_min tinyint [not null, default: 1, note: '存档槽位下限（RUN_SLOT_MIN）']
+  run_slot_max tinyint [not null, default: 3, note: '存档槽位上限（RUN_SLOT_MAX）']
+  snapshot_version int [not null, default: 1, note: '当前快照结构版本（SNAPSHOT_VERSION）']
+  grid_cols tinyint [not null, default: 9, note: '网格列数（COLS）']
+  grid_rows tinyint [not null, default: 5, note: '网格行数（ROWS）']
+  wave_unit_gap decimal(6,3) [not null, default: 0.900, note: '同波内单僵尸间隔（秒，WAVE_UNIT_GAP）']
+  zombie_bite_interval decimal(6,3) [not null, default: 0.500, note: '啃食间隔（秒，ZOMBIE_BITE_INTERVAL）']
+  zombie_bite_damage int [not null, default: 34, note: '每口啃食伤害（ZOMBIE_BITE_DAMAGE）']
+  slow_factor decimal(6,4) [not null, default: 0.5000, note: '寒冰减速倍率（SLOW_FACTOR）']
+  slow_duration decimal(6,3) [not null, default: 5.000, note: '减速持续时长（秒，SLOW_DURATION）']
+  seed_slot_base tinyint [not null, default: 5, note: '卡槽基础数（SEED_SLOT_BASE）']
+  seed_slot_step tinyint [not null, default: 4, note: '卡槽每增长步长（SEED_SLOT_STEP）']
+  seed_slot_max tinyint [not null, default: 10, note: '卡槽上限（SEED_SLOT_MAX）']
+  seed_select_from_level int [not null, default: 7, note: '从此关序号（1 基）起需先选卡（SEED_SELECT_FROM_LEVEL）']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '承载配置常量，供 seed_slot_limit / available_plants 等派生计算（单行）。'
+}
+
+Table error_codes [note: '业务错误码字典'] {
+  code int [pk, note: '业务错误码（契约 ErrorCode 取值）']
+  http_status int [not null, note: '对应 HTTP 状态码']
+  default_msg varchar(128) [not null, note: '默认提示信息']
+  description varchar(255) [null, note: '错误说明']
+  updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
+
+  Note: '契约层面定义的错误码（工程源码仅 push_warning，无错误码体系）。取值：2001/2002/2003/3001/3002/4001/4002/4003。'
+}
+
+
+// ===========================================================================
+// 模块 9 · 对局事件与运营指标
+// ===========================================================================
+// 说明：本工程契约未定义任何商业模块（无订阅/交易/获客数据源）。
+//      本模块仅落地「唯一有事件语义」的接口 POST /progress/levels/{index}/clear
+//      的追加写流水；留存、通关转化、击杀分布等运营指标由该表聚合得出，不另建冗余指标表。
+// ---------------------------------------------------------------------------
+
+Table level_clear_events [note: '通关事件流水（运营指标数据源）'] {
+  id bigint [pk, increment, note: '主键']
+  player_id bigint [not null, note: '所属玩家']
+  level_index int [not null, note: '关卡下标（0 基，外键 → levels.id）']
+  kills int [not null, default: 0, note: '本局击杀数（clearLevel 上报值）']
+  reported_at datetime [not null, default: `current_timestamp()`, note: '上报时间']
+
+  indexes {
+    (player_id, reported_at) [name: 'idx_player_time']
+    (level_index, reported_at) [name: 'idx_level_time']
+  }
+
+  Note: '由 POST /progress/levels/{index}/clear 事件落地（追加写，只增不改）。为留存 / 转化 / 击杀分布等运营指标的唯一真实数据源。本工单未含推导视图。'
+}
+
+
+// ===========================================================================
+// 外键关系（谁引用谁 / 基数）
+// ===========================================================================
+// 约定：A > B = 多对一（A 多条引用 B 一条）；A - B = 一对一
+
+// ---- 玩家域 ----
+Ref: player_settings.player_id - players.id [delete: cascade]                                  // 玩家 1:1 设置
+Ref: player_progress.player_id - players.id [delete: cascade]                                  // 玩家 1:1 总进度
+Ref: player_level_progress.player_id > players.id [delete: cascade]                            // 玩家 1:N 分关进度
+Ref: player_level_progress.level_index > levels.id                                             // 分关进度 N:1 关卡
+
+// ---- 存档域 ----
+Ref: run_saves.player_id > players.id [delete: cascade]                                        // 玩家 1:N 存档
+Ref: run_saves.level_index > levels.id                                                         // 存档 N:1 关卡
+Ref: run_save_cards.save_id > run_saves.id [delete: cascade]                                   // 存档 1:N 携带卡片
+Ref: run_save_cards.plant_id > plants.id                                                       // 卡片 N:1 植物
+Ref: run_save_card_cooldowns.save_id > run_saves.id [delete: cascade]                          // 存档 1:N 卡片冷却
+Ref: run_save_card_cooldowns.plant_id > plants.id                                              // 冷却 N:1 植物
+Ref: run_save_wave_states.save_id - run_saves.id [delete: cascade]                             // 存档 1:1 波次状态
+Ref: run_save_pending_spawns.wave_state_id > run_save_wave_states.id [delete: cascade]         // 波次状态 1:N 待出场僵尸
+Ref: run_save_pending_spawns.zombie_id > zombies.id                                            // 待出场 N:1 僵尸
+Ref: run_save_plants.save_id > run_saves.id [delete: cascade]                                  // 存档 1:N 场上植物
+Ref: run_save_plants.plant_id > plants.id                                                      // 场上植物 N:1 植物
+Ref: run_save_zombies.save_id > run_saves.id [delete: cascade]                                 // 存档 1:N 场上僵尸
+Ref: run_save_zombies.zombie_id > zombies.id                                                   // 场上僵尸 N:1 僵尸
+Ref: run_save_mowers.save_id > run_saves.id [delete: cascade]                                  // 存档 1:N 割草机
+
+// ---- 关卡域 ----
+Ref: level_waves.level_id > levels.id [delete: cascade]                                        // 关卡 1:N 波次
+Ref: level_wave_zombies.wave_id > level_waves.id [delete: cascade]                             // 波次 1:N 僵尸明细
+Ref: level_wave_zombies.zombie_id > zombies.id                                                 // 明细 N:1 僵尸
+
+// ---- 图鉴 / 资源域 ----
+Ref: plant_behaviors.plant_id - plants.id [delete: cascade]                                    // 植物 1:1 行为参数
+Ref: card_textures.plant_id - plants.id [delete: cascade]                                      // 植物 1:1 卡片贴图
+Ref: card_regions.plant_id - plants.id [delete: cascade]                                       // 植物 1:1 卡片切图区域
+Ref: sprite_frame_delays.sheet_name > sprite_sheets.name [delete: cascade]                     // 精灵表 1:N 逐帧时长
+Ref: zombies.walk > sprite_sheets.name                                                         // 僵尸 N:1 行走精灵表
+Ref: zombies.attack > sprite_sheets.name                                                       // 僵尸 N:1 啃食精灵表
+
+// ---- 事件域 ----
+Ref: level_clear_events.player_id > players.id [delete: cascade]                               // 玩家 1:N 通关事件
+Ref: level_clear_events.level_index > levels.id                                                // 事件 N:1 关卡

@@ -12,3 +12,9 @@ export/
 *.tmp
 Thumbs.db
 desktop.ini
+
+# Python（Mock 后端）
+__pycache__/
+*.py[cod]
+.venv/
+venv/
