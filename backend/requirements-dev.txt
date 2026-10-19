@@ -1,0 +1,5 @@
+# 测试与契约校验依赖（仅开发 / CI 需要，不进入运行时）
+-r requirements.txt
+pytest>=8.0
+httpx>=0.27
+PyYAML>=6.0

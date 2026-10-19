@@ -131,6 +131,13 @@ class ZombieSnapshot(BaseModel):
     slow_t: float = Field(ge=0)
     bite_t: float = Field(ge=0)
 
+    @field_validator("type")
+    @classmethod
+    def _check_type(cls, value: str) -> str:
+        if value not in ZOMBIE_IDS:
+            raise ValueError(f"未知僵尸类型: {value}")
+        return value
+
 
 class MowerSnapshot(BaseModel):
     row: int = Field(ge=0, le=4)

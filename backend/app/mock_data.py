@@ -1646,6 +1646,7 @@ BGM_VOLUME_DB = -16.0
 # ---- 便捷索引（由上面的静态数据派生） ----
 LEVELS_BY_ID = {lv["id"]: lv for lv in LEVELS}
 ZOMBIES_BY_ID = {z["id"]: z for z in ZOMBIES}
+PLANTS_BY_ID = {p["id"]: p for p in PLANTS}
 
 # ---- 选卡与场景常量（script: game_config.gd） ----
 SEED_SLOT_BASE = 5

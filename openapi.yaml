@@ -119,7 +119,10 @@ paths:
       x-apifox-folder: 设置
       operationId: updateSettings
       summary: 保存设置
-      description: 音量取值 0.0~1.0，越界会被裁剪到区间内（对应 SaveManager 的 set_setting）。
+      description: |
+        音量取值 0.0~1.0。越界（< 0.0 或 > 1.0）或缺失字段视为非法请求，返回 400（ErrorCode 4001），
+        不做静默裁剪。注意：工程内 SaveManager.set_setting 会对越界值做 clampf 裁剪，这是「本机存档」的
+        宽容行为；本接口作为对外契约采用严格校验，二者差异在此显式声明，服务端以本契约为准。
       requestBody:
         required: true
         content:
@@ -405,6 +408,8 @@ paths:
                         used: false
                         running: false
                         x: 520.0
+        '400':
+          $ref: '#/components/responses/SlotInvalid'
         '404':
           $ref: '#/components/responses/SlotEmpty'
     put:
@@ -483,7 +488,22 @@ paths:
                 data:
                   slot: 1
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: 存档槽位非法（非 1~3，ErrorCode 2002）或请求体不满足契约（ErrorCode 4001）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                slot_invalid:
+                  value:
+                    code: 2002
+                    msg: 存档槽位非法
+                    data: null
+                bad_request:
+                  value:
+                    code: 4001
+                    msg: 参数非法
+                    data: null
         '409':
           $ref: '#/components/responses/SnapshotConflict'
     delete:
@@ -502,6 +522,10 @@ paths:
                 code: 0
                 msg: 已删除存档
                 data: null
+        '400':
+          $ref: '#/components/responses/SlotInvalid'
+        '404':
+          $ref: '#/components/responses/SlotEmpty'
 
   # ============================================================
   # 关卡
@@ -721,12 +745,6 @@ paths:
                     hp: 300
                     recharge: 7.5
                     unlock_level: 17
-                  - id: potato_mine
-                    name: Potato Mine
-                    cost: 25
-                    hp: 300
-                    recharge: 20.0
-                    unlock_level: 4
                   - id: squash
                     name: Squash
                     cost: 50
@@ -739,6 +757,12 @@ paths:
                     hp: 300
                     recharge: 11.0
                     unlock_level: 15
+                  - id: potato_mine
+                    name: Potato Mine
+                    cost: 25
+                    hp: 300
+                    recharge: 20.0
+                    unlock_level: 4
                   - id: melonpult
                     name: Melon-pult
                     cost: 300
@@ -1026,6 +1050,16 @@ components:
           example:
             code: 2001
             msg: 该槽位暂无存档
+            data: null
+    SlotInvalid:
+      description: 存档槽位非法（非 1~3，ErrorCode 2002）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 2002
+            msg: 存档槽位非法
             data: null
     LevelNotFound:
       description: 关卡不存在（下标越界，ErrorCode 3001）
