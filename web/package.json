@@ -1,0 +1,17 @@
+{
+  "name": "pvz-game-web",
+  "private": true,
+  "version": "1.0.0",
+  "description": "pvz-game 后端接口的独立 Web 对接层（Vite + TypeScript）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}
