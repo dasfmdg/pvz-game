@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS `sprite_sheets` (
   `frames` INT NOT NULL COMMENT '帧数',
   `d` DECIMAL(6,4) COMMENT '统一帧时长（秒）；仅当未单独维护 delays 时存在',
   `src` VARCHAR(255) NOT NULL COMMENT 'res:// 资源路径',
+  `sort_order` INT NOT NULL COMMENT '清单展示顺序（SHEETS 声明顺序下标，0 基；对应 GET /sprites 的 sheets 顺序）',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='对应 SpriteMeta.SHEETS（横向精灵表，共 46 张）。d 与 delays 二选一。';
@@ -215,6 +216,7 @@ CREATE TABLE IF NOT EXISTS `zombies` (
   `jump` VARCHAR(64) COMMENT '翻越动画精灵表名（仅 pole 僵尸）',
   `after_jump_walk` VARCHAR(64) COMMENT '翻越落地后行走精灵表名（仅 pole 僵尸）',
   `rip` VARCHAR(64) COMMENT '报纸撕碎动画精灵表名（仅 newspaper 僵尸）',
+  `sort_order` INT NOT NULL COMMENT '图鉴展示顺序（ZOMBIES 声明顺序下标，0 基；对应 GET /zombies 的返回顺序）',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_zombies_walk` FOREIGN KEY (`walk`) REFERENCES `sprite_sheets` (`name`),

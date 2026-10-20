@@ -110,12 +110,17 @@ def _seed_zombies(conn: Connection, metadata: MetaData) -> dict[str, int]:
     table = metadata.tables["zombies"]
     # 各僵尸的专属列并不一致（如仅 flag 有 has_flag），统一补齐为全部列以保证批量插入列集一致
     columns = [column.name for column in table.columns if column.name != "updated_at"]
-    rows = [{column: zombie.get(column) for column in columns} for zombie in mock_data.ZOMBIES]
+    rows = []
+    for order, zombie in enumerate(mock_data.ZOMBIES):
+        row = {column: zombie.get(column) for column in columns}
+        # 图鉴展示顺序 = ZOMBIES 声明顺序（GET /zombies 的返回顺序即由此列决定）
+        row["sort_order"] = order
+        rows.append(row)
     _upsert(
         conn,
         table,
         rows,
-        ["name", "hp", "speed", "zw", "zh", "walk", "attack"],
+        ["name", "hp", "speed", "zw", "zh", "walk", "attack", "sort_order"],
     )
     return {"zombies": len(rows)}
 
@@ -134,10 +139,12 @@ def _seed_sprite_sheets(conn: Connection, metadata: MetaData) -> dict[str, int]:
             # d 与 delays 二选一：无统一帧时长的精灵表此列留 NULL（补齐键以保证批量插入列集一致）
             "d": sheet.get("d"),
             "src": sheet["src"],
+            # 清单展示顺序 = SHEETS 声明顺序（GET /sprites 的 sheets 顺序即由此列决定）
+            "sort_order": order,
         }
-        for sheet in mock_data.SHEETS
+        for order, sheet in enumerate(mock_data.SHEETS)
     ]
-    _upsert(conn, sheets, sheet_rows, ["w", "h", "frames", "d", "src"])
+    _upsert(conn, sheets, sheet_rows, ["w", "h", "frames", "d", "src", "sort_order"])
 
     delay_rows: list[dict] = []
     for sheet in mock_data.SHEETS:

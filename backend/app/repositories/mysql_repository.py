@@ -680,7 +680,8 @@ class MySqlRepository(Repository):
     def list_zombies(self) -> list[dict]:
         zombies = self._table("zombies")
         with self._engine.begin() as conn:
-            rows = conn.execute(select(zombies).order_by(zombies.c.id)).all()
+            # 按 sort_order 输出：与内置默认数据的 ZOMBIES 声明顺序一致（契约「对齐 GameConfig.ZOMBIES」）
+            rows = conn.execute(select(zombies).order_by(zombies.c.sort_order)).all()
         return [self._zombie_dict(row) for row in rows]
 
     def get_zombie(self, zombie_id: str) -> dict | None:
@@ -716,7 +717,8 @@ class MySqlRepository(Repository):
         cards = self._table("card_textures")
         regions = self._table("card_regions")
         with self._engine.begin() as conn:
-            sheet_rows = conn.execute(select(sheets).order_by(sheets.c.name)).all()
+            # 按 sort_order 输出：与内置默认数据的 SHEETS 声明顺序一致
+            sheet_rows = conn.execute(select(sheets).order_by(sheets.c.sort_order)).all()
             delay_rows = conn.execute(
                 select(delays).order_by(delays.c.sheet_name, delays.c.frame_index)
             ).all()

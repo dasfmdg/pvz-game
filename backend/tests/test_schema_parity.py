@@ -50,6 +50,27 @@ def test_generated_ddl_shape():
     assert order.index("zombies") < order.index("level_wave_zombies")
 
 
+def test_dbml_and_drawdb_json_describe_the_same_schema():
+    """pvz_game.dbml 与 pvz_game.json 是同一套物理结构的两种表达，表 / 列必须一一对应。"""
+    import json
+
+    json_path = DBML_PATH.parent / "pvz_game.json"
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+
+    dbml_columns = {
+        table.name: {column.name for column in table.columns}
+        for table in parse_dbml(DBML_PATH.read_text(encoding="utf-8")).tables
+    }
+    json_columns = {
+        table["name"]: {field["name"] for field in table.get("fields", [])}
+        for table in payload["tables"]
+    }
+
+    assert set(json_columns) == set(dbml_columns), "DBML 与 JSON 的表集合不一致"
+    for table in dbml_columns:
+        assert json_columns[table] == dbml_columns[table], f"表 {table} 的列集合在 DBML 与 JSON 中不一致"
+
+
 def _require_database():
     try:
         metadata = get_metadata()

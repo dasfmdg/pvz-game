@@ -177,7 +177,8 @@ def test_catalogs_from_database(mysql_repository):
 
     zombies = mysql_repository.list_zombies()
     assert len(zombies) == 8
-    assert {zombie["id"] for zombie in zombies} == set(mock_data.ZOMBIES_BY_ID)
+    # 顺序必须等于 ZOMBIES 声明顺序（靠 zombies.sort_order 落库保证），而非主键字典序
+    assert [zombie["id"] for zombie in zombies] == [item["id"] for item in mock_data.ZOMBIES]
     assert mysql_repository.get_zombie("pole")["jump"] == "z_pole_jump"
     assert mysql_repository.get_zombie("newspaper")["rip"] == "z_newspaper_rip"
     assert mysql_repository.get_zombie("flag")["has_flag"] is True

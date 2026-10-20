@@ -315,6 +315,7 @@ Table zombies [note: '僵尸图鉴'] {
     jump varchar(64) [note: '翻越动画精灵表名（仅 pole 僵尸）']
     after_jump_walk varchar(64) [note: '翻越落地后行走精灵表名（仅 pole 僵尸）']
     rip varchar(64) [note: '报纸撕碎动画精灵表名（仅 newspaper 僵尸）']
+    sort_order int [not null, note: '图鉴展示顺序（ZOMBIES 声明顺序下标，0 基；对应 GET /zombies 的返回顺序）']
     updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
 
     Note: '对应 GameConfig.ZOMBIES（8 类：basic / cone / bucket / football / door / flag / pole / newspaper）。源码无 damage / has_hat 字段（啃食伤害为全局常量 zombie_bite_damage）。'
@@ -352,6 +353,7 @@ Table sprite_sheets [note: '精灵表'] {
     frames int [not null, note: '帧数']
     d decimal(6,4) [note: '统一帧时长（秒）；仅当未单独维护 delays 时存在']
     src varchar(255) [not null, note: 'res:// 资源路径']
+    sort_order int [not null, note: '清单展示顺序（SHEETS 声明顺序下标，0 基；对应 GET /sprites 的 sheets 顺序）']
     updated_at datetime [not null, default: `current_timestamp()`, note: '更新时间']
 
     Note: '对应 SpriteMeta.SHEETS（横向精灵表，共 46 张）。d 与 delays 二选一。'

@@ -2089,6 +2089,19 @@
           "comment": "报纸撕碎动画精灵表名（仅 newspaper 僵尸）"
         },
         {
+          "id": 190,
+          "name": "sort_order",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "图鉴展示顺序（ZOMBIES 声明顺序下标，0 基；对应 GET /zombies 的返回顺序）"
+        },
+        {
           "id": 131,
           "name": "updated_at",
           "type": "DATETIME",
@@ -2350,6 +2363,19 @@
           "notNull": true,
           "increment": false,
           "comment": "res:// 资源路径"
+        },
+        {
+          "id": 191,
+          "name": "sort_order",
+          "type": "INT",
+          "size": "",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "清单展示顺序（SHEETS 声明顺序下标，0 基；对应 GET /sprites 的 sheets 顺序）"
         },
         {
           "id": 148,
