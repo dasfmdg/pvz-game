@@ -1,4 +1,4 @@
-# 本地便携 MySQL 实例管理（开发用，Windows）
+﻿# 本地便携 MySQL 实例管理（开发用，Windows）
 #
 # 用途：在不动系统服务、不影响其它项目 data 目录的前提下，为 pvz-game 单独起一个 MySQL 实例。
 #   - 独立 datadir：%LOCALAPPDATA%\pvz-game-mysql\data
