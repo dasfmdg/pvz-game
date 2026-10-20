@@ -10,6 +10,20 @@
 `js/config.js`（该表为 11 植物 / 6 僵尸），本工程在其上新增了西瓜投手、甜菜、撑杆僵尸与读报僵尸；工程结构参考
 `../PVZ-Godot-Dream-main`（autoload 事件总线 + 管理器 + 实体分层）。
 
+## 目录
+
+- [运行方式](#运行方式) —— 跑游戏本体
+- [操作](#操作)
+- [玩法内容](#玩法内容) —— 植物 / 僵尸 / 关卡 / 选卡 / 经济
+- [目录结构](#目录结构)
+- [后端服务与数据库](#后端服务与数据库) —— `backend/`（FastAPI + MySQL 8.0）
+- [Web 前端对接层](#web-前端对接层) —— `web/`（Vite + TypeScript）
+- [校验与测试](#校验与测试) —— Godot 无窗口用例 / 后端 pytest / 结构一致性
+- [数值调整](#数值调整)
+- [素材](#素材)
+- [版权与使用限制](#版权与使用限制)
+- [待办](#待办)
+
 ## 运行方式
 
 ```bash
@@ -55,11 +69,11 @@ godot --headless --path . --quit-after 400
   下方从已解锁植物里点选/取消，选卡顺序即时显示；槽位上限 `min(已解锁数, 5 + 每 4 关 +1, 10)`，
   即第 7 关 6 张、第 11 关 7 张、第 17 关 9 张、第 21 关起封顶 10 张；第 1~6 关仍直接进关。
   选卡结果只存在本次运行内存里，结算后按 `R` 重试沿用同一套卡片，退出游戏不落存档。
-- 阳光经济：初始阳光按关卡配置 50 / 75 / 100，天降阳光每 10 秒一颗（夜间不下），向日葵每 12 秒产出一颗。
+- **阳光经济**：初始阳光按关卡配置 50 / 75 / 100，天降阳光每 10 秒一颗（夜间不下），向日葵每 12 秒产出一颗。
 
 ## 目录结构
 
-```
+```text
 scenes/main.tscn            入口场景（仅根节点，其余节点代码构建）
 scripts/main.gd             启动入口：界面路由（启动加载页 → 主菜单 → 关卡选择 / 图鉴 / 设置 → 选卡 → 关卡）
 scripts/autoload/           EventBus / GameConfig / SpriteLibrary / SoundManager / SaveManager 五个单例
@@ -71,21 +85,21 @@ scripts/ui/                 卡片槽与冷却、HUD、横幅、胜负遮罩、�
 assets/                     精灵表 PNG、WAV 音效、卡片图、草坪背景（来自 ../pvzcode/assets）
 tools/gen_sprite_meta.py    从 ../pvzcode/js/sprites-meta.js 生成 scripts/data/sprite_meta.gd
 tools/headless_sim.*        无窗口整局模拟（自动采集阳光 + 布阵，验证波次/胜负链路）
-tools/entity_test.*         无窗口实体层单元校验（顶具/破损/减速/各类植物与僵尸行为，运行时打印 PASS/FAIL 清单）
+tools/entity_test.*         无窗口实体层校验（顶具/破损/减速/各类植物与僵尸行为，运行时打印 PASS/FAIL 清单）
 tools/screen_test.*         无窗口界面层校验（路由、选卡、存档、40 关数据与解锁表、图鉴、设置，运行时打印 PASS/FAIL 清单）
 tools/level_sim.*           无窗口 40 关逐关模拟（逐关自动布阵打到结束，验证波次/胜负链路不卡死）
 openapi.yaml                后端接口契约（OpenAPI 3.0.3，14 path / 18 operation / 27 schema）
 pvz_game.dbml               数据库物理结构（DBML，目标 MySQL 8.0，28 表 / 29 外键）
 pvz_game.json               同上的 drawDB 兼容 JSON（可导入 drawDB 可视化）
+backend/                    FastAPI 服务（按 openapi.yaml 逐接口实现，默认持久化到 MySQL）
 backend/db/                 数据库接入层（DBML→DDL 生成器、schema.sql、连接与 seed）
 backend/app/repositories/   仓储层（base 接口 + mysql 实现 + memory 降级实现）
 backend/scripts/            本地 MySQL 实例管理与一键初始化（mysql_local.ps1 / db_up.py）
-backend/                    FastAPI 服务（按 openapi.yaml 逐接口实现，默认持久化到 MySQL）
-backend/tests/              后端测试（pytest：单元 / 集成 / 契约一致性 / MySQL 专项 / schema 一致性，170 项）
+backend/tests/              后端测试（pytest：单元 / 集成 / 契约一致性 / MySQL 专项 / schema 一致性，171 项）
 web/                        Web 前端对接层（Vite + TypeScript：契约类型 + 请求封装 + 7 个视图）
 ```
 
-## 后端接口与数据库结构
+## 后端服务与数据库
 
 本工程为纯离线单机游戏，源码内不含任何 HTTP 调用。另附一套「后端服务 + 数据库物理结构」，供联调、归档与演示使用：
 
@@ -93,7 +107,8 @@ web/                        Web 前端对接层（Vite + TypeScript：契约类�
 - **后端服务**：`backend/`（FastAPI + uvicorn，端点统一挂 `/api` 前缀）。**默认持久化到真实 MySQL 8.0**；设 `PVZ_STORE=memory` 可切回纯内存态（无数据库环境下的降级 / 测试通道），两种后端共用同一套派生公式与契约断言。
 - **数据库物理结构**：[pvz_game.dbml](pvz_game.dbml)（DBML，目标 MySQL 8.0，28 张表 / 29 条外键）与 [pvz_game.json](pvz_game.json)（同内容的 drawDB 兼容 JSON，可导入 drawDB 可视化）。按模块划分：玩家与设置、进度、存档快照、关卡配置、植物图鉴、僵尸图鉴、资源（音频 / 精灵）、全局规则与错误码、对局事件与运营指标。该结构已是**运行库**：由 `backend/db/generate_schema.py` 编译成幂等的 `backend/db/schema.sql`，服务启动时反射使用。
 - **单一事实来源链**：`pvz_game.dbml` → `backend/db/schema.sql` → 真实 MySQL → SQLAlchemy 反射。代码里不存在第二份表结构定义；`backend/tests/test_schema_parity.py` 锁死这条链（改了 DBML 却忘记重新生成 DDL 会直接测试失败）。
-- **Web 前端对接层**：`web/`（Vite + TypeScript，`strict`）。含与契约 27 个 schema 同源的类型定义（字段保持 snake_case）、统一 `{ "code", "msg", "data" }` 解包与错误码抛出的请求封装，以及与 18 个 operation 一一对应的调用函数与 7 个视图（概览 / 设置 / 进度 / 存档 / 关卡 / 图鉴 / 资源，每个异步视图均含 Loading / Error / Empty 三态）。
+
+### 启动顺序
 
 ```bash
 # 1) 启动本地 MySQL（便携实例：独立 datadir + 端口 3307，不动系统服务与其它项目的 data 目录）
@@ -113,7 +128,24 @@ uvicorn app.main:app --port 3000
 
 > 数据来源为工程真实数据模型（`save_manager.gd` / `game_config.gd` / `sound_manager.gd` / `sprite_library.gd` / `sprite_meta.gd`）；工程契约未定义订阅 / 交易 / 获客等商业数据源，故未建对应表。
 
+## Web 前端对接层
+
+`web/` 是面向该接口契约的独立 Web 对接层（类型定义 + 请求封装 + 7 个视图），用于浏览接口、验证契约与联调：
+
+```bash
+cd web
+npm install
+npm run dev       # 开发服务 http://localhost:5173
+npm run typecheck # 仅类型检查（tsc --noEmit，strict）
+npm run build     # 类型检查 + 生产构建
+npm run preview   # 预览构建产物 http://localhost:4173
+```
+
+接口基址默认为契约 `servers[0]`（`http://localhost:3000/api`），可用环境变量 `VITE_API_BASE` 覆盖。
+
 ## 校验与测试
+
+Godot 侧（需已安装 `godot` 命令）：
 
 ```bash
 # 资源导入（首次或新增素材后执行）
@@ -129,39 +161,30 @@ godot --headless --fixed-fps 60 --quit-after 2400 --path . res://tools/entity_te
 godot --headless --fixed-fps 60 --path . res://tools/level_sim.tscn
 ```
 
-### 后端（Mock 服务）测试
+后端侧（无需 Godot）：
 
 ```bash
 cd backend
 pip install -r requirements-dev.txt   # pytest + httpx + PyYAML
-pytest                                # 170 项：单元 / 集成 / 契约一致性 / MySQL 专项 / schema 一致性
+pytest                                # 171 项
 ```
 
-测试分层：`tests/test_store.py`、`tests/test_schemas.py`、`tests/test_levels_logic.py` 为单元测试；
-`tests/test_api_*.py` 用 FastAPI TestClient 覆盖 18 个 operation 的正常 / 边界 / 异常场景；
-`tests/test_contract.py` 解析 `openapi.yaml` 并与应用自生成 OpenAPI 逐条比对，确保 path / method /
-operationId / 响应结构零偏差。
+测试分层：
 
-测试默认跑**内存后端**，因此没有数据库也能完整验证契约；另外两套用例在 MySQL 可用时会自动执行
-（不可用则 `skip`，不会把"没跑"说成"通过"）：`tests/test_repository_mysql.py` 验证真库行为、
-存档全图往返与"重启后数据仍在"，`tests/test_schema_parity.py` 锁死 DBML ↔ schema.sql ↔ 真实库的一致性。
+| 用例 | 覆盖内容 |
+| --- | --- |
+| `tests/test_store.py`、`tests/test_schemas.py`、`tests/test_levels_logic.py` | 单元测试：内存态状态机、Pydantic 边界校验、关卡派生公式 |
+| `tests/test_api_*.py` | 用 FastAPI TestClient 覆盖 18 个 operation 的正常 / 边界 / 异常场景 |
+| `tests/test_contract.py` | 解析 `openapi.yaml` 与应用自生成 OpenAPI 逐条比对，确保 path / method / operationId / 响应结构零偏差 |
+| `tests/test_repository_mysql.py`、`tests/test_schema_parity.py` | MySQL 专项：真库行为、存档全图往返、"重启后数据仍在"；并锁死 DBML ↔ schema.sql ↔ 真实库的一致性 |
+
+测试默认跑**内存后端**，因此没有数据库也能完整验证契约；后两套在 MySQL 可用时自动执行，不可用则 `skip`
+（不会把"没跑"说成"通过"）。
 
 ```bash
 # 数据库结构三链一致性（无需数据库）
 python backend/db/generate_schema.py --check
 ```
-
-### Web 前端对接层
-
-```bash
-cd web
-npm install
-npm run dev       # 开发服务 http://localhost:5173
-npm run build     # tsc --noEmit + vite build
-npm run preview   # 预览构建产物 http://localhost:4173
-```
-
-接口基址默认为契约 `servers[0]`（`http://localhost:3000/api`），可用环境变量 `VITE_API_BASE` 覆盖。
 
 ## 数值调整
 
