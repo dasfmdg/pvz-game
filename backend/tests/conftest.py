@@ -1,9 +1,13 @@
 """pytest 公共夹具。
 
-- reset_server_state：每个用例前后把进程内可变状态（settings / progress / saves）
-  复位到出厂初始值，保证用例之间零串扰（store.state 是模块级单例，路由按引用持有）。
-- client：FastAPI TestClient，等价于对该 ASGI 应用发起真实 HTTP 请求。
+- 默认把 `PVZ_STORE` 设为 `memory`：既有 150 项契约/集成测试无需数据库即可跑；
+  需要验证 MySQL 后端的用例自行 monkeypatch 成 `mysql`（见 tests/test_repository_mysql.py）。
+- reset_server_state：每个用例前后把内存态复位到出厂值（store.state 是模块级单例）。
 """
+
+import os
+
+os.environ.setdefault("PVZ_STORE", "memory")
 
 import pytest
 from fastapi.testclient import TestClient

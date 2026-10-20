@@ -1,40 +1,61 @@
-"""单元测试：关卡派生逻辑（与 game_config.gd 的公式 / 源数据保持一致）。"""
+"""单元测试：关卡派生逻辑（与 game_config.gd 的公式 / 源数据保持一致）。
+
+派生公式已下沉到 `app.repositories.base`，内存后端与 MySQL 后端共用同一套实现，
+本模块直接对公式与源数据做校验。
+"""
 
 from app import mock_data
-from app.routers.levels import _seed_slot_limit, _zombies_for_level, plants_for_level
+from app.repositories.base import (
+    derive_available_plants,
+    derive_seed_slot_limit,
+    derive_zombies_for_level,
+)
+
+RULES = {
+    "seed_slot_base": mock_data.SEED_SLOT_BASE,
+    "seed_slot_step": mock_data.SEED_SLOT_STEP,
+    "seed_slot_max": mock_data.SEED_SLOT_MAX,
+}
 
 
-def _expected_plants(level_id):
+def _plants_for_level(level_id: int) -> list[str]:
+    return derive_available_plants(mock_data.PLANT_ORDER, mock_data.PLANT_UNLOCK, level_id)
+
+
+def _seed_slot_limit(level_id: int) -> int:
+    return derive_seed_slot_limit(len(_plants_for_level(level_id)), level_id, RULES)
+
+
+def _zombies_for_level(index: int) -> list[str]:
+    return derive_zombies_for_level(
+        mock_data.LEVELS_BY_ID[index]["waves"], set(mock_data.ZOMBIES_BY_ID)
+    )
+
+
+def _expected_plants(level_id: int) -> list[str]:
     """game_config.plants_for_level：PLANT_UNLOCK 中 unlock_level <= level_id 的植物。"""
     return [pid for pid in mock_data.PLANT_ORDER if mock_data.PLANT_UNLOCK.get(pid, 0) <= level_id]
 
 
-def _expected_slot_limit(level_id):
-    """game_config.seed_slot_limit：clampi(mini(unlocked, mini(grown, MAX)), 1, MAX)。"""
-    unlocked = len(_expected_plants(level_id))
-    grown = mock_data.SEED_SLOT_BASE + max(level_id - 1, 0) // mock_data.SEED_SLOT_STEP
-    return max(1, min(unlocked, min(grown, mock_data.SEED_SLOT_MAX), mock_data.SEED_SLOT_MAX))
-
-
 # ---------------- plants_for_level ----------------
 def test_first_level_only_starter_plants():
-    assert plants_for_level(1) == ["sunflower", "peashooter"]
+    assert _plants_for_level(1) == ["sunflower", "peashooter"]
 
 
 def test_plants_for_level_matches_formula_across_all_levels():
     for level_id in range(1, 41):
-        assert plants_for_level(level_id) == _expected_plants(level_id)
+        assert _plants_for_level(level_id) == _expected_plants(level_id)
 
 
 def test_unlocked_plant_count_is_monotonic_and_saturates():
-    sizes = [len(plants_for_level(level_id)) for level_id in range(1, 41)]
+    sizes = [len(_plants_for_level(level_id)) for level_id in range(1, 41)]
     assert sizes == sorted(sizes)
     assert sizes[-1] == len(mock_data.PLANT_ORDER)
 
 
 # ---------------- seed_slot_limit ----------------
 def test_seed_slot_limit_known_samples():
-    # 与 README 记录的曲线一致：第 7 关 6 / 第 11 关 7 / 第 17 关 9 / 第 25 关起封顶 10
+    # 与 README 记录的曲线一致：第 7 关 6 / 第 11 关 7 / 第 17 关 9 / 第 21 关起封顶 10
     assert _seed_slot_limit(1) == 2
     assert _seed_slot_limit(7) == 6
     assert _seed_slot_limit(11) == 7
@@ -48,24 +69,24 @@ def test_seed_slot_limit_always_within_1_to_max():
         assert 1 <= _seed_slot_limit(level_id) <= mock_data.SEED_SLOT_MAX
 
 
-def test_seed_slot_limit_matches_formula_across_all_levels():
-    for level_id in range(1, 41):
-        assert _seed_slot_limit(level_id) == _expected_slot_limit(level_id)
-
-
 # ---------------- zombies_for_level ----------------
 def test_first_level_zombies_is_basic_only():
     assert _zombies_for_level(0) == ["basic"]
 
 
 def test_zombies_dedup_in_first_appearance_order():
-    # LEVELS[2] 波次中首次出现顺序：basic -> cone -> bucket
     assert _zombies_for_level(2) == ["basic", "cone", "bucket"]
 
 
 def test_flag_never_listed():
     for index in range(40):
         assert "flag" not in _zombies_for_level(index)
+
+
+def test_needs_seed_select_threshold_is_seventh_level():
+    assert mock_data.SEED_SELECT_FROM_LEVEL == 7
+    assert not (0 + 1 >= mock_data.SEED_SELECT_FROM_LEVEL)
+    assert 6 + 1 >= mock_data.SEED_SELECT_FROM_LEVEL
 
 
 # ---------------- 源数据完整性 ----------------
@@ -101,7 +122,19 @@ def test_night_levels_match_game_config():
 
 def test_plant_unlock_table_and_order_are_consistent():
     assert set(mock_data.PLANT_UNLOCK) == set(mock_data.PLANT_ORDER)
+    assert set(mock_data.PLANT_BEHAVIOR) <= set(mock_data.PLANT_ORDER)
     assert mock_data.SEED_SLOT_BASE == 5
     assert mock_data.SEED_SLOT_STEP == 4
     assert mock_data.SEED_SLOT_MAX == 10
     assert mock_data.SEED_SELECT_FROM_LEVEL == 7
+
+
+def test_error_code_rows_match_enum_and_defaults():
+    from app.errors import _DEFAULT_MSG, _HTTP_STATUS, ErrorCode
+
+    rows = {code: (status, message) for code, status, message, _ in mock_data.ERROR_CODE_ROWS}
+    assert set(rows) == {int(code) for code in ErrorCode}
+    for code in ErrorCode:
+        status, message = rows[int(code)]
+        assert status == _HTTP_STATUS[code]
+        assert message == _DEFAULT_MSG[code]

@@ -1,3 +1,7 @@
 fastapi>=0.110
 uvicorn[standard]>=0.27
 pydantic>=2.5
+# 数据库接入（默认后端持久化到 MySQL 8.0；cryptography 供 caching_sha2_password 认证使用）
+SQLAlchemy>=2.0
+PyMySQL>=1.1
+cryptography>=42.0

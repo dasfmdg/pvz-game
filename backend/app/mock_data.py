@@ -1648,6 +1648,34 @@ LEVELS_BY_ID = {lv["id"]: lv for lv in LEVELS}
 ZOMBIES_BY_ID = {z["id"]: z for z in ZOMBIES}
 PLANTS_BY_ID = {p["id"]: p for p in PLANTS}
 
+# ---- 植物行为参数（script: game_config.gd 的 PLANT_BEHAVIOR） ----
+PLANT_BEHAVIOR = {
+    "sunflower": {"first_sun": 12.0, "sun_interval": 12.0},
+    "peashooter": {"fire_interval": 1.5, "first_fire": 0.6, "damage": 20},
+    "repeater": {"fire_interval": 1.5, "first_fire": 0.6, "damage": 20, "second_delay": 0.13},
+    "snowpea": {"fire_interval": 1.4, "first_fire": 0.6, "damage": 20},
+    "threepeater": {"fire_interval": 1.5, "first_fire": 0.6, "damage": 20},
+    "potato_mine": {"arm_time": 15.0, "damage": 1800, "trigger_x": 60.0},
+    "squash": {"trigger_x": 130.0, "damage": 1800, "squash_time": 0.55},
+    "chomper": {"trigger_x": 60.0, "damage": 1800, "rest_time": 15.0},
+    "cherrybomb": {"fuse": 1.15, "damage": 1800},
+    "jalapeno": {"fuse": 1.15, "damage": 1800},
+    "melonpult": {"fire_interval": 3.0, "first_fire": 0.8, "damage": 80, "splash_damage": 40, "slow": True},
+    "beetroot": {"fire_interval": 2.0, "first_fire": 0.8, "damage": 45, "muzzle_offset": 34.0},
+}
+
+# ---- 错误码字典（与 app/errors.py 的 ErrorCode 一致） ----
+ERROR_CODE_ROWS = [
+    (2001, 404, "该槽位暂无存档", "存档槽位为空"),
+    (2002, 400, "存档槽位非法", "存档槽位取值不在 1~3 范围内"),
+    (2003, 409, "快照版本不兼容", "快照版本与 SNAPSHOT_VERSION 不一致"),
+    (3001, 404, "关卡不存在", "关卡下标越界（超出 0~39）"),
+    (3002, 409, "关卡未解锁", "上报的关卡下标大于当前 unlocked_level"),
+    (4001, 400, "参数非法", "请求体缺字段或取值越界"),
+    (4002, 400, "校验失败", "字段结构或取值不满足契约"),
+    (4003, 404, "僵尸类型不存在", "僵尸 id 不在 ZOMBIES 中"),
+]
+
 # ---- 选卡与场景常量（script: game_config.gd） ----
 SEED_SLOT_BASE = 5
 SEED_SLOT_STEP = 4

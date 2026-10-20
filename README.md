@@ -77,27 +77,39 @@ tools/level_sim.*           无窗口 40 关逐关模拟（逐关自动布阵打
 openapi.yaml                后端接口契约（OpenAPI 3.0.3，14 path / 18 operation / 27 schema）
 pvz_game.dbml               数据库物理结构（DBML，目标 MySQL 8.0，28 表 / 29 外键）
 pvz_game.json               同上的 drawDB 兼容 JSON（可导入 drawDB 可视化）
-backend/                    Mock 后端（FastAPI，按 openapi.yaml 逐接口实现）
-backend/tests/              后端测试（pytest：单元 / 集成 / 契约一致性，150 项）
+backend/db/                 数据库接入层（DBML→DDL 生成器、schema.sql、连接与 seed）
+backend/app/repositories/   仓储层（base 接口 + mysql 实现 + memory 降级实现）
+backend/scripts/            本地 MySQL 实例管理与一键初始化（mysql_local.ps1 / db_up.py）
+backend/                    FastAPI 服务（按 openapi.yaml 逐接口实现，默认持久化到 MySQL）
+backend/tests/              后端测试（pytest：单元 / 集成 / 契约一致性 / MySQL 专项 / schema 一致性，170 项）
 web/                        Web 前端对接层（Vite + TypeScript：契约类型 + 请求封装 + 7 个视图）
 ```
 
 ## 后端接口与数据库结构
 
-本工程为纯离线单机游戏，源码内不含任何 HTTP 调用。为便于扩展与联调，额外补充了一套「可 Mock 的后端」与配套的数据库物理结构：
+本工程为纯离线单机游戏，源码内不含任何 HTTP 调用。另附一套「后端服务 + 数据库物理结构」，供联调、归档与演示使用：
 
 - **接口契约**：[openapi.yaml](openapi.yaml)（OpenAPI 3.0.3，14 path / 18 operation / 27 schema）。统一响应体 `{ "code": 0, "msg": "ok", "data": ... }`，无登录鉴权（进度按单机玩家维度处理）；关卡下标 **0 基**、存档槽位 **1~3**、字段名全部 snake_case。
-- **Mock 后端**：`backend/`（FastAPI + uvicorn，端点统一挂 `/api` 前缀），按上述契约逐接口返回，用于 Apifox Mock / 前端联调。
-- **数据库物理结构**：[pvz_game.dbml](pvz_game.dbml)（DBML，目标 MySQL 8.0，28 张表 / 29 条外键）与 [pvz_game.json](pvz_game.json)（同内容的 drawDB 兼容 JSON，可导入 drawDB 可视化）。按模块划分：玩家与设置、进度、存档快照、关卡配置、植物图鉴、僵尸图鉴、资源（音频 / 精灵）、全局规则与错误码、对局事件与运营指标。
+- **后端服务**：`backend/`（FastAPI + uvicorn，端点统一挂 `/api` 前缀）。**默认持久化到真实 MySQL 8.0**；设 `PVZ_STORE=memory` 可切回纯内存态（无数据库环境下的降级 / 测试通道），两种后端共用同一套派生公式与契约断言。
+- **数据库物理结构**：[pvz_game.dbml](pvz_game.dbml)（DBML，目标 MySQL 8.0，28 张表 / 29 条外键）与 [pvz_game.json](pvz_game.json)（同内容的 drawDB 兼容 JSON，可导入 drawDB 可视化）。按模块划分：玩家与设置、进度、存档快照、关卡配置、植物图鉴、僵尸图鉴、资源（音频 / 精灵）、全局规则与错误码、对局事件与运营指标。该结构已是**运行库**：由 `backend/db/generate_schema.py` 编译成幂等的 `backend/db/schema.sql`，服务启动时反射使用。
+- **单一事实来源链**：`pvz_game.dbml` → `backend/db/schema.sql` → 真实 MySQL → SQLAlchemy 反射。代码里不存在第二份表结构定义；`backend/tests/test_schema_parity.py` 锁死这条链（改了 DBML 却忘记重新生成 DDL 会直接测试失败）。
 - **Web 前端对接层**：`web/`（Vite + TypeScript，`strict`）。含与契约 27 个 schema 同源的类型定义（字段保持 snake_case）、统一 `{ "code", "msg", "data" }` 解包与错误码抛出的请求封装，以及与 18 个 operation 一一对应的调用函数与 7 个视图（概览 / 设置 / 进度 / 存档 / 关卡 / 图鉴 / 资源，每个异步视图均含 Loading / Error / Empty 三态）。
 
 ```bash
-# 启动 Mock 后端（默认对齐契约的 http://localhost:3000/api）
+# 1) 启动本地 MySQL（便携实例：独立 datadir + 端口 3307，不动系统服务与其它项目的 data 目录）
+powershell -File backend/scripts/mysql_local.ps1 start
+
+# 2) 建库 + 应用 schema + 灌初始数据（幂等，可重复执行；不会覆盖玩家已有进度与存档）
+python backend/scripts/db_up.py
+
+# 3) 启动服务（默认 PVZ_STORE=mysql，连 127.0.0.1:3307；用 PVZ_STORE=memory 可切内存态）
 cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --port 3000
 # 交互式接口文档：http://localhost:3000/docs
 ```
+
+> 连接串可用 `PVZ_DB_DSN` 覆盖（默认 `mysql+pymysql://root@127.0.0.1:3307/pvz_game`）；便携实例的安装目录与端口可用 `PVZ_MYSQL_BASE` / `PVZ_MYSQL_PORT` 覆盖。
 
 > 数据来源为工程真实数据模型（`save_manager.gd` / `game_config.gd` / `sound_manager.gd` / `sprite_library.gd` / `sprite_meta.gd`）；工程契约未定义订阅 / 交易 / 获客等商业数据源，故未建对应表。
 
@@ -122,13 +134,22 @@ godot --headless --fixed-fps 60 --path . res://tools/level_sim.tscn
 ```bash
 cd backend
 pip install -r requirements-dev.txt   # pytest + httpx + PyYAML
-pytest                                # 150 项：单元 / 集成 / 契约一致性
+pytest                                # 170 项：单元 / 集成 / 契约一致性 / MySQL 专项 / schema 一致性
 ```
 
 测试分层：`tests/test_store.py`、`tests/test_schemas.py`、`tests/test_levels_logic.py` 为单元测试；
 `tests/test_api_*.py` 用 FastAPI TestClient 覆盖 18 个 operation 的正常 / 边界 / 异常场景；
 `tests/test_contract.py` 解析 `openapi.yaml` 并与应用自生成 OpenAPI 逐条比对，确保 path / method /
 operationId / 响应结构零偏差。
+
+测试默认跑**内存后端**，因此没有数据库也能完整验证契约；另外两套用例在 MySQL 可用时会自动执行
+（不可用则 `skip`，不会把"没跑"说成"通过"）：`tests/test_repository_mysql.py` 验证真库行为、
+存档全图往返与"重启后数据仍在"，`tests/test_schema_parity.py` 锁死 DBML ↔ schema.sql ↔ 真实库的一致性。
+
+```bash
+# 数据库结构三链一致性（无需数据库）
+python backend/db/generate_schema.py --check
+```
 
 ### Web 前端对接层
 
