@@ -1,7 +1,7 @@
 """数据库连接与元数据反射（懒加载，进程内单例）。
 
-DSN 来源优先级：环境变量 `PVZ_DB_DSN` > 默认本地实例。
-默认值对齐本机便携实例：D:\\tools\\mysql-8.0.36-winx64 起的独立实例（端口 3307，库 pvz_game）。
+DSN 来源优先级：环境变量 `PVZ_DB_DSN` > 默认 Docker 实例。
+默认值对齐 `backend/deploy/docker-compose.yml`：MySQL 8.4 LTS 容器（宿主 3307，库 pvz_game）。
 
 表结构不在此处声明：由 `db.schema.sql` 建表后通过 SQLAlchemy 反射获得，
 避免出现「代码里一份表结构 + DBML 里一份」的双份定义。
@@ -14,7 +14,7 @@ import os
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.engine import Engine
 
-DEFAULT_DSN = "mysql+pymysql://root@127.0.0.1:3307/pvz_game?charset=utf8mb4"
+DEFAULT_DSN = "mysql+pymysql://root:pvz_root_2026@127.0.0.1:3307/pvz_game?charset=utf8mb4"
 
 _engine: Engine | None = None
 _metadata: MetaData | None = None

@@ -1,0 +1,46 @@
+# ============================================================================
+# pvz-game · MySQL 8.4 LTS（Docker）
+#
+# 启动：docker compose -f backend/deploy/docker-compose.yml up -d
+# 停止：docker compose -f backend/deploy/docker-compose.yml down
+# 清库重建（删除数据卷后下次启动自动重放 schema + 测试数据）：
+#       docker compose -f backend/deploy/docker-compose.yml down -v
+#
+# 首次启动（数据卷为空）时，官方镜像会按文件名顺序执行
+# /docker-entrypoint-initdb.d 下的初始化脚本：
+#   01_schema.sql   ← backend/db/schema.sql（由 pvz_game.dbml 生成）
+#   02_testdata.sql ← backend/db/testdata.sql（配套测试数据）
+# 数据卷已有数据时不会重复执行；日常建表/补数请用 backend/scripts/db_up.py（幂等）。
+# ============================================================================
+
+name: pvz-game
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: pvz-mysql
+    restart: unless-stopped
+    ports:
+      # 宿主 3307 → 容器 3306（避开系统默认 3306，与后端默认 DSN 一致）
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PVZ_MYSQL_ROOT_PASSWORD:-pvz_root_2026}
+      MYSQL_DATABASE: pvz_game
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    volumes:
+      - pvz_mysql_data:/var/lib/mysql
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ../db/testdata.sql:/docker-entrypoint-initdb.d/02_testdata.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 30s
+
+volumes:
+  pvz_mysql_data:

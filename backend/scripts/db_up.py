@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """一键初始化数据库（幂等）：建库 → 应用 schema.sql → 灌初始数据。
 
-前提：MySQL 实例已启动（本地便携实例可用 backend/scripts/mysql_local.ps1 start 拉起）。
-连接串取环境变量 `PVZ_DB_DSN`，默认 `mysql+pymysql://root@127.0.0.1:3307/pvz_game`。
+前提：MySQL 实例已启动（Docker 实例可用 `docker compose -f backend/deploy/docker-compose.yml up -d` 拉起）。
+连接串取环境变量 `PVZ_DB_DSN`，默认 `mysql+pymysql://root:pvz_root_2026@127.0.0.1:3307/pvz_game`。
 
 用法：
     python backend/scripts/db_up.py

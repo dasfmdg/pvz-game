@@ -16,7 +16,7 @@
 - [操作](#操作)
 - [玩法内容](#玩法内容) —— 植物 / 僵尸 / 关卡 / 选卡 / 经济
 - [目录结构](#目录结构)
-- [后端服务与数据库](#后端服务与数据库) —— `backend/`（FastAPI + MySQL 8.0）
+- [后端服务与数据库](#后端服务与数据库) —— `backend/`（FastAPI + MySQL 8.4 LTS）
 - [Web 前端对接层](#web-前端对接层) —— `web/`（Vite + TypeScript）
 - [校验与测试](#校验与测试) —— Godot 无窗口用例 / 后端 pytest / 结构一致性
 - [数值调整](#数值调整)
@@ -94,6 +94,7 @@ pvz_game.json               同上的 drawDB 兼容 JSON（可导入 drawDB 可�
 backend/                    FastAPI 服务（按 openapi.yaml 逐接口实现，默认持久化到 MySQL）
 backend/db/                 数据库接入层（DBML→DDL 生成器、schema.sql、连接与 seed）
 backend/app/repositories/   仓储层（base 接口 + mysql 实现 + memory 降级实现）
+backend/deploy/             MySQL 8.4 LTS 的 Docker 编排（docker-compose.yml）
 backend/scripts/            本地 MySQL 实例管理与一键初始化（mysql_local.ps1 / db_up.py）
 backend/tests/              后端测试（pytest：单元 / 集成 / 契约一致性 / MySQL 专项 / schema 一致性，171 项）
 web/                        Web 前端对接层（Vite + TypeScript：契约类型 + 请求封装 + 7 个视图）
@@ -104,17 +105,18 @@ web/                        Web 前端对接层（Vite + TypeScript：契约类�
 本工程为纯离线单机游戏，源码内不含任何 HTTP 调用。另附一套「后端服务 + 数据库物理结构」，供联调、归档与演示使用：
 
 - **接口契约**：[openapi.yaml](openapi.yaml)（OpenAPI 3.0.3，14 path / 18 operation / 27 schema）。统一响应体 `{ "code": 0, "msg": "ok", "data": ... }`，无登录鉴权（进度按单机玩家维度处理）；关卡下标 **0 基**、存档槽位 **1~3**、字段名全部 snake_case。
-- **后端服务**：`backend/`（FastAPI + uvicorn，端点统一挂 `/api` 前缀）。**默认持久化到真实 MySQL 8.0**；设 `PVZ_STORE=memory` 可切回纯内存态（无数据库环境下的降级 / 测试通道），两种后端共用同一套派生公式与契约断言。
+- **后端服务**：`backend/`（FastAPI + uvicorn，端点统一挂 `/api` 前缀）。**默认持久化到 Docker 中的 MySQL 8.4 LTS**；设 `PVZ_STORE=memory` 可切回纯内存态（无数据库环境下的降级 / 测试通道），两种后端共用同一套派生公式与契约断言。
 - **数据库物理结构**：[pvz_game.dbml](pvz_game.dbml)（DBML，目标 MySQL 8.0，28 张表 / 29 条外键）与 [pvz_game.json](pvz_game.json)（同内容的 drawDB 兼容 JSON，可导入 drawDB 可视化）。按模块划分：玩家与设置、进度、存档快照、关卡配置、植物图鉴、僵尸图鉴、资源（音频 / 精灵）、全局规则与错误码、对局事件与运营指标。该结构已是**运行库**：由 `backend/db/generate_schema.py` 编译成幂等的 `backend/db/schema.sql`，服务启动时反射使用。
 - **单一事实来源链**：`pvz_game.dbml` → `backend/db/schema.sql` → 真实 MySQL → SQLAlchemy 反射。代码里不存在第二份表结构定义；`backend/tests/test_schema_parity.py` 锁死这条链（改了 DBML 却忘记重新生成 DDL 会直接测试失败）。
 
 ### 启动顺序
 
 ```bash
-# 1) 启动本地 MySQL（便携实例：独立 datadir + 端口 3307，不动系统服务与其它项目的 data 目录）
-powershell -File backend/scripts/mysql_local.ps1 start
+# 1) 启动 MySQL 8.4 LTS（Docker；宿主 3307 → 容器 3306，utf8mb4_unicode_ci + 东八区）
+#    首次启动（空数据卷）自动建库、建表并导入配套测试数据
+docker compose -f backend/deploy/docker-compose.yml up -d
 
-# 2) 建库 + 应用 schema + 灌初始数据（幂等，可重复执行；不会覆盖玩家已有进度与存档）
+# 2) 补数 / 校验（幂等，可重复执行；不会覆盖玩家已有进度与存档）
 python backend/scripts/db_up.py
 
 # 3) 启动服务（默认 PVZ_STORE=mysql，连 127.0.0.1:3307；用 PVZ_STORE=memory 可切内存态）
@@ -124,7 +126,7 @@ uvicorn app.main:app --port 3000
 # 交互式接口文档：http://localhost:3000/docs
 ```
 
-> 连接串可用 `PVZ_DB_DSN` 覆盖（默认 `mysql+pymysql://root@127.0.0.1:3307/pvz_game`）；便携实例的安装目录与端口可用 `PVZ_MYSQL_BASE` / `PVZ_MYSQL_PORT` 覆盖。
+> 连接串可用 `PVZ_DB_DSN` 覆盖（默认 `mysql+pymysql://root:pvz_root_2026@127.0.0.1:3307/pvz_game`）；root 密码可用 `PVZ_MYSQL_ROOT_PASSWORD` 覆盖（compose 与 DSN 需保持一致）。清库重建：`docker compose -f backend/deploy/docker-compose.yml down -v` 后再 `up -d`，初始化脚本会重放建表与测试数据。
 
 > 数据来源为工程真实数据模型（`save_manager.gd` / `game_config.gd` / `sound_manager.gd` / `sprite_library.gd` / `sprite_meta.gd`）；工程契约未定义订阅 / 交易 / 获客等商业数据源，故未建对应表。
 
